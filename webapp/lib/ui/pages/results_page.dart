@@ -60,9 +60,11 @@ class ResultsPage extends ConsumerWidget {
           const SizedBox(height: 10),
           Expanded(
             child: outputsAsync.when(
-              data: (out) {
-                if (out == null) {
-                  return Center(child: Text(preview ? 'No outputs yet.' : 'No outputs yet. Go back and generate.'));
+              data: (platform_stories) {
+                if (platform_stories == null) {
+                  return Center(
+                      child: Text(
+                          preview ? 'No outputs yet.' : 'No outputs yet. Go back and generate.'));
                 }
 
                 if (!preview) {
@@ -75,7 +77,7 @@ class ResultsPage extends ConsumerWidget {
                       promptText: promptText,
                       attachmentCount: attachmentCount,
                       selectedTopicTitle: topic?.title ?? '',
-                      outputs: out,
+                      platform_stories: platform_stories,
                     );
                     await ref.read(historyProvider.notifier).add(item);
                   });
@@ -85,22 +87,24 @@ class ResultsPage extends ConsumerWidget {
                   // Compact preview (first ~6 lines each)
                   return ListView(
                     children: [
-                      _PreviewBlock(title: 'YouTube', text: out.youtube),
+                      _PreviewBlock(title: 'YouTube', text: platform_stories.yt_story.description),
                       const SizedBox(height: 10),
-                      _PreviewBlock(title: 'TikTok', text: out.tiktok),
+                      _PreviewBlock(
+                          title: 'TikTok', text: platform_stories.tiktok_story.description),
                       const SizedBox(height: 10),
-                      _PreviewBlock(title: 'Instagram', text: out.instagram),
+                      _PreviewBlock(
+                          title: 'Instagram', text: platform_stories.insta_story.description),
                     ],
                   );
                 }
 
                 return ListView(
                   children: [
-                    _OutputCard(title: 'YouTube', text: out.youtube),
+                    _OutputCard(title: 'YouTube', text: platform_stories.yt_story.description),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'TikTok', text: out.tiktok),
+                    _OutputCard(title: 'TikTok', text: platform_stories.tiktok_story.description),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'Instagram', text: out.instagram),
+                    _OutputCard(title: 'Instagram', text: platform_stories.insta_story.description),
                   ],
                 );
               },

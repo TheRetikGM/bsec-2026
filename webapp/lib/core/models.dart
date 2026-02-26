@@ -1,57 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-class Topic {
-  final String id;
-  final String title;
-
-  // Detailed fields (editable on Topics page)
-  final String hook;
-  final String angle;
-  final List<String> keyPoints;
-
-  const Topic({
-    required this.id,
-    required this.title,
-    required this.hook,
-    required this.angle,
-    required this.keyPoints,
-  });
-
-  Topic copyWith({
-    String? id,
-    String? title,
-    String? hook,
-    String? angle,
-    List<String>? keyPoints,
-  }) {
-    return Topic(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      hook: hook ?? this.hook,
-      angle: angle ?? this.angle,
-      keyPoints: keyPoints ?? this.keyPoints,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'hook': hook,
-        'angle': angle,
-        'keyPoints': keyPoints,
-      };
-
-  static Topic fromJson(Map<String, dynamic> json) => Topic(
-        id: (json['id'] ?? '').toString(),
-        title: (json['title'] ?? '').toString(),
-        hook: (json['hook'] ?? '').toString(),
-        angle: (json['angle'] ?? '').toString(),
-        keyPoints: (json['keyPoints'] is List)
-            ? (json['keyPoints'] as List).map((e) => e.toString()).toList()
-            : const <String>[],
-      );
-}
+import 'package:ai_redakcia_frontend/models/platform_stories_model.dart';
+import 'package:ai_redakcia_frontend/models/story_model.dart';
 
 class GlobalSettings {
   final String language;
@@ -101,56 +52,6 @@ class GlobalSettings {
       );
 }
 
-class StoryOverview {
-  final String title;
-  final String overview;
-  final List<String> beats;
-
-  const StoryOverview({
-    required this.title,
-    required this.overview,
-    required this.beats,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'title': title,
-        'overview': overview,
-        'beats': beats,
-      };
-
-  static StoryOverview fromJson(Map<String, dynamic> json) => StoryOverview(
-        title: (json['title'] ?? '').toString(),
-        overview: (json['overview'] ?? '').toString(),
-        beats: (json['beats'] is List)
-            ? (json['beats'] as List).map((e) => e.toString()).toList()
-            : const <String>[],
-      );
-}
-
-class GeneratedOutputs {
-  final String youtube;
-  final String tiktok;
-  final String instagram;
-
-  const GeneratedOutputs({
-    required this.youtube,
-    required this.tiktok,
-    required this.instagram,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'youtube': youtube,
-        'tiktok': tiktok,
-        'instagram': instagram,
-      };
-
-  static GeneratedOutputs fromJson(Map<String, dynamic> json) => GeneratedOutputs(
-        youtube: (json['youtube'] ?? '').toString(),
-        tiktok: (json['tiktok'] ?? '').toString(),
-        instagram: (json['instagram'] ?? '').toString(),
-      );
-}
-
 class PromptAttachment {
   final String id;
   final Uint8List bytes;
@@ -174,8 +75,8 @@ class HistoryItem {
   final String promptText;
   final int attachmentCount;
   final String selectedTopicTitle;
-  final StoryOverview? story;
-  final GeneratedOutputs? outputs;
+  final StoryModel? story;
+  final PlatformStoriesModel? platform_stories;
 
   const HistoryItem({
     required this.id,
@@ -183,7 +84,7 @@ class HistoryItem {
     required this.promptText,
     required this.attachmentCount,
     required this.selectedTopicTitle,
-    required this.outputs,
+    required this.platform_stories,
     this.story,
   });
 
@@ -194,7 +95,7 @@ class HistoryItem {
         'attachmentCount': attachmentCount,
         'selectedTopicTitle': selectedTopicTitle,
         'story': story?.toJson(),
-        'outputs': outputs?.toJson(),
+        'outputs': platform_stories?.toJson(),
       };
 
   static HistoryItem fromJson(Map<String, dynamic> json) => HistoryItem(
@@ -207,10 +108,10 @@ class HistoryItem {
             : int.tryParse((json['attachmentCount'] ?? '0').toString()) ?? 0,
         selectedTopicTitle: (json['selectedTopicTitle'] ?? '').toString(),
         story: (json['story'] is Map<String, dynamic>)
-            ? StoryOverview.fromJson(json['story'] as Map<String, dynamic>)
+            ? StoryModel.fromJson(json['story'] as Map<String, dynamic>)
             : null,
-        outputs: (json['outputs'] is Map<String, dynamic>)
-            ? GeneratedOutputs.fromJson(json['outputs'] as Map<String, dynamic>)
+        platform_stories: (json['outputs'] is Map<String, dynamic>)
+            ? PlatformStoriesModel.fromJson(json['outputs'] as Map<String, dynamic>)
             : null,
       );
 }

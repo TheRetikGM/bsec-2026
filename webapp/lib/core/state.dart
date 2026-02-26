@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:ai_redakcia_frontend/models/platform_stories_model.dart';
+import 'package:ai_redakcia_frontend/models/profile_model.dart';
+import 'package:ai_redakcia_frontend/models/story_model.dart';
+import 'package:ai_redakcia_frontend/models/topic_model.dart';
+import 'package:ai_redakcia_frontend/services/story_gen_service.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +23,7 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(baseUrl: _kBase
 
 // Pages: 0 Start -> 1 Topics -> 2 Story -> 3 Posts
 final pageIndexProvider = NotifierProvider<PageIndexNotifier, int>(PageIndexNotifier.new);
+
 class PageIndexNotifier extends Notifier<int> {
   @override
   int build() => 0;
@@ -25,6 +31,7 @@ class PageIndexNotifier extends Notifier<int> {
 }
 
 final promptTextProvider = NotifierProvider<PromptTextNotifier, String>(PromptTextNotifier.new);
+
 class PromptTextNotifier extends Notifier<String> {
   @override
   String build() => '';
@@ -32,6 +39,7 @@ class PromptTextNotifier extends Notifier<String> {
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, GlobalSettings>(SettingsNotifier.new);
+
 class SettingsNotifier extends Notifier<GlobalSettings> {
   @override
   GlobalSettings build() => const GlobalSettings(
@@ -45,7 +53,8 @@ class SettingsNotifier extends Notifier<GlobalSettings> {
 }
 
 final promptAttachmentsProvider =
-    NotifierProvider<PromptAttachmentsNotifier, List<PromptAttachment>>(PromptAttachmentsNotifier.new);
+    NotifierProvider<PromptAttachmentsNotifier, List<PromptAttachment>>(
+        PromptAttachmentsNotifier.new);
 
 class PromptAttachmentsNotifier extends Notifier<List<PromptAttachment>> {
   @override
@@ -63,37 +72,45 @@ class PromptAttachmentsNotifier extends Notifier<List<PromptAttachment>> {
   void clear() => state = const [];
 }
 
-final topicsProvider = AsyncNotifierProvider<TopicsNotifier, List<Topic>>(TopicsNotifier.new);
+final topicsProvider =
+    AsyncNotifierProvider<TopicsNotifier, List<ProfileModel>>(TopicsNotifier.new);
 
-class TopicsNotifier extends AsyncNotifier<List<Topic>> {
+class TopicsNotifier extends AsyncNotifier<List<ProfileModel>> {
   @override
-  Future<List<Topic>> build() async => const [];
+  Future<List<ProfileModel>> build() async => const [];
 
   Future<void> generateFromPrompt() async {
-    final api = ref.read(apiClientProvider);
+    // final api = ref.read(apiClientProvider);
     final text = ref.read(promptTextProvider);
+    final TopicModel topic = TopicModel(prompt: text);
     final attachments = ref.read(promptAttachmentsProvider);
     final settings = ref.read(settingsProvider);
 
+    // TODO: include attachments
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => api.suggestTopics(
-          promptText: text.trim(),
-          attachments: attachments,
-          settings: settings,
-        ));
+    state = await AsyncValue.guard(() => ref.read(storyGenServiceProvider).generateTopics(topic));
+    // state = await AsyncValue.guard(() => api.suggestTopics(
+    //   promptText: text.trim(),
+    //   attachments: attachments,
+    //   settings: settings,
+    // ));
   }
 
   void clear() => state = const AsyncData([]);
 }
 
-final selectedTopicIdProvider = NotifierProvider<SelectedTopicIdNotifier, String?>(SelectedTopicIdNotifier.new);
+final selectedTopicIdProvider =
+    NotifierProvider<SelectedTopicIdNotifier, String?>(SelectedTopicIdNotifier.new);
+
 class SelectedTopicIdNotifier extends Notifier<String?> {
   @override
   String? build() => null;
   void set(String? v) => state = v;
 }
 
-final expandedTopicIdProvider = NotifierProvider<ExpandedTopicIdNotifier, String?>(ExpandedTopicIdNotifier.new);
+final expandedTopicIdProvider =
+    NotifierProvider<ExpandedTopicIdNotifier, String?>(ExpandedTopicIdNotifier.new);
+
 class ExpandedTopicIdNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -101,51 +118,83 @@ class ExpandedTopicIdNotifier extends Notifier<String?> {
   void close() => state = null;
 }
 
-final editableTopicProvider = NotifierProvider<EditableTopicNotifier, Topic?>(EditableTopicNotifier.new);
+final editableTopicProvider =
+    NotifierProvider<EditableTopicNotifier, Topic?>(EditableTopicNotifier.new);
+
 class EditableTopicNotifier extends Notifier<Topic?> {
   @override
   Topic? build() => null;
   void set(Topic? t) => state = t;
 }
 
-final storyProvider = AsyncNotifierProvider<StoryNotifier, StoryOverview?>(StoryNotifier.new);
-class StoryNotifier extends AsyncNotifier<StoryOverview?> {
+final profileNotifier = AsyncNotifierProvider<ProfileNotifier, ProfileModel?>(ProfileNotifier.new);
+
+class ProfileNotifier extends AsyncNotifier<ProfileModel?> {
   @override
-  Future<StoryOverview?> build() async => null;
+  Future<ProfileModel?> build() async => null;
 
-  Future<void> generate() async {
-    final api = ref.read(apiClientProvider);
-    final topic = ref.read(editableTopicProvider);
-    final settings = ref.read(settingsProvider);
-    if (topic == null) return;
+  // Future<void> generate() async {
+  //   final topic_profile = ref.read(editableTopicProvider);
+  //   if (topic_profile == null) return;
 
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() => api.generateStoryOverview(topic: topic, settings: settings));
+  //   state = const AsyncLoading();
+  //   state =
+  //       await AsyncValue.guard(() => ref.read(storyGenServiceProvider).writeStory(topic_profile));
+  //   // state = await AsyncValue.guard(() => api.generateStoryOverview(topic: topic, settings: settings));
+  // }
+  void updateProfile(ProfileModel profile) {
+    state = AsyncData(profile);
   }
 
   void clear() => state = const AsyncData(null);
 }
 
-final postsProvider = AsyncNotifierProvider<PostsNotifier, GeneratedOutputs?>(PostsNotifier.new);
-class PostsNotifier extends AsyncNotifier<GeneratedOutputs?> {
+final storyProvider = AsyncNotifierProvider<StoryNotifier, StoryModel?>(StoryNotifier.new);
+
+class StoryNotifier extends AsyncNotifier<StoryModel?> {
   @override
-  Future<GeneratedOutputs?> build() async => null;
+  Future<StoryModel?> build() async => null;
 
   Future<void> generate() async {
-    final api = ref.read(apiClientProvider);
-    final topic = ref.read(editableTopicProvider);
+    final topic_profile = ref.read(profileNotifier);
+    if (topic_profile.value == null) return;
+
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+        () => ref.read(storyGenServiceProvider).writeStory(topic_profile.value!));
+    // state = await AsyncValue.guard(() => api.generateStoryOverview(topic: topic, settings: settings));
+  }
+
+  void clear() => state = const AsyncData(null);
+}
+
+final postsProvider =
+    AsyncNotifierProvider<PostsNotifier, PlatformStoriesModel?>(PostsNotifier.new);
+
+class PostsNotifier extends AsyncNotifier<PlatformStoriesModel?> {
+  @override
+  Future<PlatformStoriesModel?> build() async => null;
+
+  Future<void> generate() async {
     final story = ref.read(storyProvider).value;
-    final settings = ref.read(settingsProvider);
-    if (topic == null || story == null) return;
+    // final settings = ref.read(settingsProvider);
+
+    if (story == null) return;
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => api.generatePosts(topic: topic, story: story, settings: settings));
+    state = await AsyncValue.guard(
+        () => ref.read(storyGenServiceProvider).createPlatformStories(story!));
+
+    // state = await AsyncValue.guard(
+    //     () => api.generatePosts(topic: topic, story: story, settings: settings));
   }
 
   void clear() => state = const AsyncData(null);
 }
 
-final historyProvider = AsyncNotifierProvider<HistoryNotifier, List<HistoryItem>>(HistoryNotifier.new);
+final historyProvider =
+    AsyncNotifierProvider<HistoryNotifier, List<HistoryItem>>(HistoryNotifier.new);
+
 class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
   @override
   Future<List<HistoryItem>> build() async {
@@ -190,7 +239,9 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
 
   Future<void> importFromJsonFile() async {
     final file = await openFile(
-      acceptedTypeGroups: [const XTypeGroup(extensions: ['json'])],
+      acceptedTypeGroups: [
+        const XTypeGroup(extensions: ['json'])
+      ],
     );
     if (file == null) return;
 
@@ -209,7 +260,9 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
 
     final location = await getSaveLocation(
       suggestedName: 'history.json',
-      acceptedTypeGroups: [const XTypeGroup(extensions: ['json'])],
+      acceptedTypeGroups: [
+        const XTypeGroup(extensions: ['json'])
+      ],
     );
     if (location == null) return;
 

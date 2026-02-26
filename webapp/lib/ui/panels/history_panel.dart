@@ -124,7 +124,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                       subtitle: Text(
                         '${h.createdAt.toLocal()} • attachments: ${h.attachmentCount}'
                         '${h.story == null ? '' : ' • story ✅'}'
-                        '${h.outputs == null ? '' : ' • posts ✅'}',
+                        '${h.platform_stories == null ? '' : ' • posts ✅'}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

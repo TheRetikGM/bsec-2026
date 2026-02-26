@@ -65,10 +65,13 @@ class _PreviewBody extends ConsumerWidget {
         data: (topics) {
           if (topics.isEmpty) return const Text('No topics yet. Generate from the prompt.');
           return ListView(
-            children: topics.take(10).map((t) => ListTile(
-              dense: true,
-              title: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-            )).toList(),
+            children: topics
+                .take(10)
+                .map((t) => ListTile(
+                      dense: true,
+                      title: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ))
+                .toList(),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -116,13 +119,13 @@ class _PreviewBody extends ConsumerWidget {
       return ListView(
         children: [
           const Text('YouTube', style: TextStyle(fontWeight: FontWeight.w700)),
-          Text(posts.youtube, maxLines: 6, overflow: TextOverflow.ellipsis),
+          Text(posts.yt_story.description, maxLines: 6, overflow: TextOverflow.ellipsis),
           const Divider(),
           const Text('TikTok', style: TextStyle(fontWeight: FontWeight.w700)),
-          Text(posts.tiktok, maxLines: 6, overflow: TextOverflow.ellipsis),
+          Text(posts.tiktok_story.description, maxLines: 6, overflow: TextOverflow.ellipsis),
           const Divider(),
           const Text('Instagram', style: TextStyle(fontWeight: FontWeight.w700)),
-          Text(posts.instagram, maxLines: 6, overflow: TextOverflow.ellipsis),
+          Text(posts.insta_story.description, maxLines: 6, overflow: TextOverflow.ellipsis),
         ],
       );
     }

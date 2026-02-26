@@ -1,9 +1,15 @@
+import 'package:ai_redakcia_frontend/models/history_models/youtube_history_model.dart';
 import 'package:ai_redakcia_frontend/services/api_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/platform_stories_model.dart';
 import '../models/profile_model.dart';
 import '../models/story_model.dart';
 import '../models/topic_model.dart';
+
+final storyGenServiceProvider = Provider<StoryGenService>((ref) {
+  return StoryGenService();
+});
 
 class StoryGenService {
   final ApiService _apiService;
@@ -42,5 +48,16 @@ class StoryGenService {
     );
 
     return PlatformStoriesModel.fromJson(json);
+  }
+
+  Future<bool> submitYoutubeHistory(List<YoutubeHistoryModel> youtube_histories) async {
+    final jsonList = youtube_histories.map((history) => history.toJson()).toList();
+
+    final json = await _apiService.postJson(
+      path: '/submit_youtube_history', // change later
+      body: jsonList,
+    );
+
+    return true;
   }
 }

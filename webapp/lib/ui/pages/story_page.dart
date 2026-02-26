@@ -117,12 +117,8 @@ class StoryPage extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Text(story.overview),
+                              Text(),
                               const SizedBox(height: 10),
-                              const Text('Beats', style: TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Text(beats),
-                              const SizedBox(height: 12),
                               FilledButton.icon(
                                 onPressed: () async {
                                   // Generate posts and move forward

@@ -17,7 +17,7 @@ class ApiService {
   /// Returns decoded JSON response as Map<String, dynamic>
   Future<Map<String, dynamic>> postJson({
     required String path,
-    required Map<String, dynamic> body,
+    required Object body,
     Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(_buildUrl(path));

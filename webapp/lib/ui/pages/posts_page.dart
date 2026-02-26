@@ -34,9 +34,11 @@ class PostsPage extends ConsumerWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               ),
               TextButton.icon(
-                onPressed: postsAsync.isLoading ? null : () async {
-                  await ref.read(postsProvider.notifier).generate();
-                },
+                onPressed: postsAsync.isLoading
+                    ? null
+                    : () async {
+                        await ref.read(postsProvider.notifier).generate();
+                      },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Regenerate'),
               ),
@@ -53,14 +55,17 @@ class PostsPage extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('No posts yet.', style: TextStyle(fontWeight: FontWeight.w800)),
+                          const Text('No posts yet.',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
                           const SizedBox(height: 8),
                           const Text('Go back and generate story, then posts.'),
                           const SizedBox(height: 12),
                           FilledButton.icon(
-                            onPressed: (topic == null || story == null) ? null : () async {
-                              await ref.read(postsProvider.notifier).generate();
-                            },
+                            onPressed: (topic == null || story == null)
+                                ? null
+                                : () async {
+                                    await ref.read(postsProvider.notifier).generate();
+                                  },
                             icon: const Icon(Icons.play_arrow),
                             label: const Text('Generate posts'),
                           ),
@@ -80,18 +85,18 @@ class PostsPage extends ConsumerWidget {
                     attachmentCount: attachmentCount,
                     selectedTopicTitle: topic?.title ?? '',
                     story: story,
-                    outputs: out,
+                    platform_stories: out,
                   );
                   await ref.read(historyProvider.notifier).add(item);
                 });
 
                 return ListView(
                   children: [
-                    _OutputCard(title: 'YouTube', text: out.youtube),
+                    _OutputCard(title: 'YouTube', text: out.yt_story.description),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'TikTok', text: out.tiktok),
+                    _OutputCard(title: 'TikTok', text: out.tiktok_story.description),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'Instagram', text: out.instagram),
+                    _OutputCard(title: 'Instagram', text: out.insta_story.description),
                   ],
                 );
               },
