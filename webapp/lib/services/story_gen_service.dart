@@ -1,36 +1,46 @@
-import 'package:ai_redakcia_frontend/models/email_story_model.dart';
-import 'package:ai_redakcia_frontend/models/tiktok_story_model.dart';
-import 'package:ai_redakcia_frontend/models/youtube_story_model.dart';
 import 'package:ai_redakcia_frontend/services/api_service.dart';
 
-import '../models/insta_story_model.dart';
 import '../models/platform_stories_model.dart';
 import '../models/profile_model.dart';
 import '../models/story_model.dart';
 import '../models/topic_model.dart';
 
 class StoryGenService {
-  final ApiService apiService;
+  final ApiService _apiService;
 
-  StoryGenService() : apiService = ApiService(host: "https://nn.datovka.eu") {}
+  StoryGenService() : _apiService = ApiService(host: "https://nn.datovka.eu") {}
 
   Future<List<ProfileModel>> generateTopics(TopicModel topic) async {
-    await Future.delayed(Duration(seconds: 1));
-    return [];
+    try {
+      final response = await _apiService.postJson(
+        path: '/dummy-endpoint', // change later
+        body: topic.toJson(), // 🔥 serialize Freezed model
+      );
+
+      final profilesJson = response['profiles'] as List<dynamic>;
+
+      return profilesJson.map((e) => ProfileModel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      // Optional: log or wrap error
+      rethrow;
+    }
   }
 
   Future<StoryModel> writeStory(ProfileModel topic) async {
-    await Future.delayed(Duration(seconds: 1));
-    return StoryModel(story: "This is a dummy story");
+    final json = await _apiService.postJson(
+      path: '/write-story', // change later
+      body: topic.toJson(),
+    );
+
+    return StoryModel.fromJson(json);
   }
 
   Future<PlatformStoriesModel> createPlatformStories(StoryModel topic) async {
-    await Future.delayed(Duration(seconds: 1));
-    return PlatformStoriesModel(
-      yt_story: YoutubeStoryModel(story: "Youtube story script"),
-      insta_story: InstaStoryModel(story: "Instagram story post"),
-      tiktok_story: TiktokStoryModel(story: "Tiktok story post"),
-      email_story: EmailStoryModel(story: "Email to send to evaluators"),
+    final json = await _apiService.postJson(
+      path: '/create-platform-stories', // change later
+      body: topic.toJson(),
     );
+
+    return PlatformStoriesModel.fromJson(json);
   }
 }
