@@ -12,7 +12,7 @@ class PostsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final postsAsync = ref.watch(postsProvider);
-    final topic = ref.watch(editableTopicProvider);
+    final profile = ref.watch(editableTopicProvider);
     final story = ref.watch(storyProvider).value;
     final promptText = ref.watch(promptTextProvider);
     final attachmentCount = ref.watch(promptAttachmentsProvider).length;
@@ -61,7 +61,7 @@ class PostsPage extends ConsumerWidget {
                           const Text('Go back and generate story, then posts.'),
                           const SizedBox(height: 12),
                           FilledButton.icon(
-                            onPressed: (topic == null || story == null)
+                            onPressed: (profile == null || story == null)
                                 ? null
                                 : () async {
                                     await ref.read(postsProvider.notifier).generate();
@@ -75,7 +75,6 @@ class PostsPage extends ConsumerWidget {
                   );
                 }
 
-                // Save to history once posts exist
                 WidgetsBinding.instance.addPostFrameCallback((_) async {
                   final id = 'h_${DateTime.now().millisecondsSinceEpoch}';
                   final item = HistoryItem(
@@ -83,20 +82,27 @@ class PostsPage extends ConsumerWidget {
                     createdAt: DateTime.now(),
                     promptText: promptText,
                     attachmentCount: attachmentCount,
-                    selectedTopicTitle: topic?.title ?? '',
+                    selectedTopicTitle: profile?.topic ?? '',
                     story: story,
                     platform_stories: out,
                   );
                   await ref.read(historyProvider.notifier).add(item);
                 });
 
+                final ytText =
+                    'Title: ${out.yt_story.title}\n\nDescription:\n${out.yt_story.description}\n\nScenario:\n${out.yt_story.scenario}';
+                final ttText =
+                    'Description:\n${out.tiktok_story.description}\n\nScenario:\n${out.tiktok_story.scenario}';
+                final igText =
+                    'Caption:\n${out.insta_story.description}\n\nPhoto description:\n${out.insta_story.photo_description}';
+
                 return ListView(
                   children: [
-                    _OutputCard(title: 'YouTube', text: out.yt_story.description),
+                    _OutputCard(title: 'YouTube', text: ytText),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'TikTok', text: out.tiktok_story.description),
+                    _OutputCard(title: 'TikTok', text: ttText),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'Instagram', text: out.insta_story.description),
+                    _OutputCard(title: 'Instagram', text: igText),
                   ],
                 );
               },
@@ -145,7 +151,7 @@ class _OutputCard extends StatelessWidget {
           TextField(
             controller: ctrl,
             minLines: 8,
-            maxLines: 18,
+            maxLines: 20,
             readOnly: true,
             decoration: const InputDecoration(border: OutlineInputBorder()),
           ),

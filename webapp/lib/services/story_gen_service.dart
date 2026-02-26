@@ -6,6 +6,7 @@ import '../models/platform_stories_model.dart';
 import '../models/profile_model.dart';
 import '../models/story_model.dart';
 import '../models/topic_model.dart';
+import '../core/models.dart';
 
 final storyGenServiceProvider = Provider<StoryGenService>((ref) {
   return StoryGenService();
@@ -49,6 +50,28 @@ class StoryGenService {
 
     return PlatformStoriesModel.fromJson(json);
   }
+
+
+Future<List<HistoryItem>> fetchHistoryByUsernames({
+  required String youtube,
+  required String tiktok,
+  required String instagram,
+}) async {
+  final json = await _apiService.getJson(
+    path: '/history',
+    queryParameters: {
+      'youtube': youtube,
+      'tiktok': tiktok,
+      'instagram': instagram,
+    },
+  );
+
+  final list = (json['history'] as List?) ?? const [];
+  return list
+      .whereType<Map>()
+      .map((e) => HistoryItem.fromJson(Map<String, dynamic>.from(e)))
+      .toList();
+}
 
   Future<bool> submitYoutubeHistory(List<YoutubeHistoryModel> youtube_histories) async {
     final jsonList = youtube_histories.map((history) => history.toJson()).toList();

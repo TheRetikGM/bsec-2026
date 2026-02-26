@@ -34,6 +34,27 @@ class ApiService {
     return _handleResponse(response);
   }
 
+
+/// Sends a GET request to [path] with optional query parameters.
+/// Returns decoded JSON response as Map<String, dynamic>
+Future<Map<String, dynamic>> getJson({
+  required String path,
+  Map<String, String>? queryParameters,
+  Map<String, String>? headers,
+}) async {
+  final uri = Uri.parse(_buildUrl(path)).replace(queryParameters: queryParameters);
+
+  final response = await http.get(
+    uri,
+    headers: {
+      ...defaultHeaders,
+      if (headers != null) ...headers,
+    },
+  );
+
+  return _handleResponse(response);
+}
+
   /// Internal: Build full URL from host + path
   String _buildUrl(String path) {
     if (path.startsWith('/')) {

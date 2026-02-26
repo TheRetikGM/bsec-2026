@@ -2,19 +2,36 @@ import 'package:ai_redakcia_frontend/models/story_models/email_story_model.dart'
 import 'package:ai_redakcia_frontend/models/story_models/insta_story_model.dart';
 import 'package:ai_redakcia_frontend/models/story_models/tiktok_story_model.dart';
 import 'package:ai_redakcia_frontend/models/story_models/youtube_story_model.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'platform_stories_model.freezed.dart';
-part 'platform_stories_model.g.dart';
+class PlatformStoriesModel {
+  final YoutubeStoryModel yt_story;
+  final InstaStoryModel insta_story;
+  final TikTokStoryModel tiktok_story;
+  final EmailStoryModel email_story;
 
-@freezed
-abstract class PlatformStoriesModel with _$PlatformStoriesModel {
-  factory PlatformStoriesModel({
-    required YoutubeStoryModel yt_story,
-    required InstaStoryModel insta_story,
-    required TikTokStoryModel tiktok_story,
-    required EmailStoryModel email_story,
-  }) = _PlatformStoriesModel;
-  factory PlatformStoriesModel.fromJson(Map<String, dynamic> json) =>
-      _$PlatformStoriesModelFromJson(json);
+  PlatformStoriesModel({
+    required this.yt_story,
+    required this.insta_story,
+    required this.tiktok_story,
+    required this.email_story,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'yt_story': yt_story.toJson(),
+        'insta_story': insta_story.toJson(),
+        'tiktok_story': tiktok_story.toJson(),
+        'email_story': email_story.toJson(),
+      };
+
+  factory PlatformStoriesModel.fromJson(Map<String, dynamic> json) {
+    return PlatformStoriesModel(
+      yt_story: YoutubeStoryModel.fromJson((json['yt_story'] ?? const {}) as Map<String, dynamic>),
+      insta_story:
+          InstaStoryModel.fromJson((json['insta_story'] ?? const {}) as Map<String, dynamic>),
+      tiktok_story:
+          TikTokStoryModel.fromJson((json['tiktok_story'] ?? const {}) as Map<String, dynamic>),
+      email_story:
+          EmailStoryModel.fromJson((json['email_story'] ?? const {}) as Map<String, dynamic>),
+    );
+  }
 }

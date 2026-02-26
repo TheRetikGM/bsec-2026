@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models.dart';
 import '../../core/state.dart';
+import '../../models/profile_model.dart';
 
 class TopicsPage extends ConsumerWidget {
   final VoidCallback onBackToStart;
@@ -17,8 +18,8 @@ class TopicsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topicsAsync = ref.watch(topicsProvider);
-    final expandedId = ref.watch(expandedTopicIdProvider);
-    final selectedId = ref.watch(selectedTopicIdProvider);
+    final expandedIndex = ref.watch(expandedTopicIdProvider);
+    final selectedIndex = ref.watch(selectedTopicIdProvider);
     final settings = ref.watch(settingsProvider);
 
     return Padding(
@@ -38,7 +39,7 @@ class TopicsPage extends ConsumerWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               ),
               TextButton.icon(
-                onPressed: (selectedId == null) ? null : onNextToStory,
+                onPressed: (selectedIndex == null) ? null : onNextToStory,
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('Next'),
               ),
@@ -61,39 +62,50 @@ class TopicsPage extends ConsumerWidget {
                   itemCount: topics.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    final t = topics[i];
-                    final isExpanded = expandedId == t.id;
+                    final p = topics[i];
+                    final isExpanded = expandedIndex == i;
+                    final isSelected = selectedIndex == i;
 
                     return Card(
                       child: Column(
                         children: [
                           ListTile(
-                            title: Text(t.title),
-                            subtitle: Text(t.angle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            title: Text(p.topic, style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text(
+                              '${p.goal} • ${p.target_group}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (isExpanded)
-                                  IconButton(
-                                    tooltip: 'Close',
-                                    icon: const Icon(Icons.expand_less),
-                                    onPressed: () => ref.read(expandedTopicIdProvider.notifier).close(),
-                                  )
-                                else
-                                  IconButton(
-                                    tooltip: 'Open details',
-                                    icon: const Icon(Icons.expand_more),
-                                    onPressed: () => ref.read(expandedTopicIdProvider.notifier).toggle(t.id),
-                                  ),
+                                IconButton(
+                                  tooltip: 'Generate story',
+                                  icon: const Icon(Icons.auto_awesome),
+                                  onPressed: () async {
+                                    ref.read(selectedTopicIdProvider.notifier).set(i);
+                                    ref.read(editableTopicProvider.notifier).set(p);
+                                    ref.read(storyProvider.notifier).clear();
+                                    ref.read(postsProvider.notifier).clear();
+
+                                    await ref.read(storyProvider.notifier).generate();
+                                    onNextToStory();
+                                  },
+                                ),
+                                IconButton(
+                                  tooltip: isExpanded ? 'Close details' : 'Open details',
+                                  icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                                  onPressed: () => ref.read(expandedTopicIdProvider.notifier).toggle(i),
+                                ),
                               ],
                             ),
+                            selected: isSelected,
                             onTap: () {
-                              // select + toggle dropdown (allows close by tapping again)
-                              ref.read(selectedTopicIdProvider.notifier).set(t.id);
-                              ref.read(editableTopicProvider.notifier).set(t);
-                              ref.read(postsProvider.notifier).clear();
+                              ref.read(selectedTopicIdProvider.notifier).set(i);
+                              ref.read(editableTopicProvider.notifier).set(p);
                               ref.read(storyProvider.notifier).clear();
-                              ref.read(expandedTopicIdProvider.notifier).toggle(t.id);
+                              ref.read(postsProvider.notifier).clear();
+                              ref.read(expandedTopicIdProvider.notifier).toggle(i);
                             },
                           ),
                           AnimatedCrossFade(
@@ -103,12 +115,10 @@ class TopicsPage extends ConsumerWidget {
                             firstChild: const SizedBox.shrink(),
                             secondChild: Padding(
                               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                              child: TopicDetailsEditor(
-                                key: ValueKey('details_${t.id}'),
-                                initialTopic: ref.watch(editableTopicProvider) ?? t,
-                                onChanged: (next) {
-                                  ref.read(editableTopicProvider.notifier).set(next);
-                                },
+                              child: ProfileDetailsEditor(
+                                key: ValueKey('details_$i'),
+                                initialProfile: ref.watch(editableTopicProvider) ?? p,
+                                onChanged: (next) => ref.read(editableTopicProvider.notifier).set(next),
                               ),
                             ),
                           ),
@@ -211,67 +221,77 @@ class _GlobalSettingsCard extends StatelessWidget {
   }
 }
 
-class TopicDetailsEditor extends StatefulWidget {
-  final Topic initialTopic;
-  final ValueChanged<Topic> onChanged;
+class ProfileDetailsEditor extends StatefulWidget {
+  final ProfileModel initialProfile;
+  final ValueChanged<ProfileModel> onChanged;
 
-  const TopicDetailsEditor({
+  const ProfileDetailsEditor({
     super.key,
-    required this.initialTopic,
+    required this.initialProfile,
     required this.onChanged,
   });
 
   @override
-  State<TopicDetailsEditor> createState() => _TopicDetailsEditorState();
+  State<ProfileDetailsEditor> createState() => _ProfileDetailsEditorState();
 }
 
-class _TopicDetailsEditorState extends State<TopicDetailsEditor> {
-  late Topic _topic;
-  late TextEditingController _hook;
-  late TextEditingController _angle;
-  late TextEditingController _keyPoints;
+class _ProfileDetailsEditorState extends State<ProfileDetailsEditor> {
+  late ProfileModel _p;
+
+  late TextEditingController _theme;
+  late TextEditingController _goal;
+  late TextEditingController _target;
+  late TextEditingController _mainThought;
+  late TextEditingController _tone;
+  late TextEditingController _idea;
 
   @override
   void initState() {
     super.initState();
-    _syncFrom(widget.initialTopic);
+    _sync(widget.initialProfile);
   }
 
   @override
-  void didUpdateWidget(covariant TopicDetailsEditor oldWidget) {
+  void didUpdateWidget(covariant ProfileDetailsEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialTopic.id != widget.initialTopic.id) {
-      _syncFrom(widget.initialTopic);
+    if (oldWidget.initialProfile != widget.initialProfile) {
+      _sync(widget.initialProfile);
     }
   }
 
-  void _syncFrom(Topic t) {
-    _topic = t;
-    _hook = TextEditingController(text: t.hook);
-    _angle = TextEditingController(text: t.angle);
-    _keyPoints = TextEditingController(text: t.keyPoints.join('\n'));
+  void _sync(ProfileModel p) {
+    _p = p;
+    _theme = TextEditingController(text: p.topic);
+    _goal = TextEditingController(text: p.goal);
+    _target = TextEditingController(text: p.target_group);
+    _mainThought = TextEditingController(text: p.main_thought);
+    _tone = TextEditingController(text: p.tone);
+    _idea = TextEditingController(text: p.idea);
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _hook.dispose();
-    _angle.dispose();
-    _keyPoints.dispose();
+    _theme.dispose();
+    _goal.dispose();
+    _target.dispose();
+    _mainThought.dispose();
+    _tone.dispose();
+    _idea.dispose();
     super.dispose();
   }
 
   void _emit() {
-    final next = _topic.copyWith(
-      hook: _hook.text.trim(),
-      angle: _angle.text.trim(),
-      keyPoints: _keyPoints.text
-          .split('\n')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList(),
+    final next = _p.copyWith(
+      theme: _theme.text.trim(),
+      goal: _goal.text.trim(),
+      target_group: _target.text.trim(),
+      main_thought: _mainThought.text.trim(),
+      tone: _tone.text.trim(),
+      idea: _idea.text.trim(),
     );
+    _p = next;
     widget.onChanged(next);
-    setState(() => _topic = next);
   }
 
   @override
@@ -280,31 +300,33 @@ class _TopicDetailsEditorState extends State<TopicDetailsEditor> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(),
-        const Text('Details', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('Details (ProfileModel)', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        TextField(
-          controller: _hook,
-          decoration: const InputDecoration(labelText: 'Hook', border: OutlineInputBorder()),
-          onChanged: (_) => _emit(),
-        ),
+        _field('Theme', _theme),
         const SizedBox(height: 10),
-        TextField(
-          controller: _angle,
-          decoration: const InputDecoration(labelText: 'Angle', border: OutlineInputBorder()),
-          onChanged: (_) => _emit(),
-        ),
+        _field('Goal', _goal),
         const SizedBox(height: 10),
-        TextField(
-          controller: _keyPoints,
-          minLines: 4,
-          maxLines: 8,
-          decoration: const InputDecoration(
-            labelText: 'Key points (1 per line)',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (_) => _emit(),
-        ),
+        _field('Target group', _target),
+        const SizedBox(height: 10),
+        _field('Main thought', _mainThought, minLines: 2),
+        const SizedBox(height: 10),
+        _field('Tone', _tone),
+        const SizedBox(height: 10),
+        _field('Idea', _idea, minLines: 3),
       ],
+    );
+  }
+
+  Widget _field(String label, TextEditingController c, {int minLines = 1}) {
+    return TextField(
+      controller: c,
+      minLines: minLines,
+      maxLines: minLines + 2,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      onChanged: (_) => _emit(),
     );
   }
 }

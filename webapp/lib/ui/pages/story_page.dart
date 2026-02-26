@@ -16,9 +16,9 @@ class StoryPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final topic = ref.watch(editableTopicProvider);
+    final profile = ref.watch(editableTopicProvider);
     final storyAsync = ref.watch(storyProvider);
-    final selectedId = ref.watch(selectedTopicIdProvider);
+    final idx = ref.watch(selectedTopicIdProvider);
 
     return Padding(
       padding: const EdgeInsets.all(14),
@@ -44,7 +44,7 @@ class StoryPage extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          if (selectedId == null || topic == null)
+          if (idx == null || profile == null)
             const Expanded(
               child: Center(child: Text('No topic selected. Go back and choose a topic.')),
             )
@@ -58,11 +58,16 @@ class StoryPage extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(topic.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          Text(profile.topic,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
                           const SizedBox(height: 8),
-                          Text('Hook: ${topic.hook}'),
+                          Text('Goal: ${profile.goal}'),
                           const SizedBox(height: 6),
-                          Text('Angle: ${topic.angle}'),
+                          Text('Target group: ${profile.target_group}'),
+                          const SizedBox(height: 6),
+                          Text('Main thought: ${profile.main_thought}'),
+                          const SizedBox(height: 6),
+                          Text('Tone: ${profile.tone}'),
                           const SizedBox(height: 10),
                           FilledButton.icon(
                             onPressed: storyAsync.isLoading
@@ -89,7 +94,6 @@ class StoryPage extends ConsumerWidget {
                         );
                       }
 
-                      final beats = story.beats.map((e) => '• $e').join('\n');
                       return Card(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
@@ -105,7 +109,7 @@ class StoryPage extends ConsumerWidget {
                                   IconButton(
                                     tooltip: 'Copy',
                                     onPressed: () async {
-                                      await Clipboard.setData(ClipboardData(text: '${story.overview}\n\n$beats'));
+                                      await Clipboard.setData(ClipboardData(text: story.story));
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(content: Text('Copied.')),
@@ -117,11 +121,10 @@ class StoryPage extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Text(),
-                              const SizedBox(height: 10),
+                              SelectableText(story.story),
+                              const SizedBox(height: 12),
                               FilledButton.icon(
                                 onPressed: () async {
-                                  // Generate posts and move forward
                                   await ref.read(postsProvider.notifier).generate();
                                   onNextToPosts();
                                 },

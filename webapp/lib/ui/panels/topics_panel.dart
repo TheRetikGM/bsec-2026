@@ -9,7 +9,7 @@ class TopicsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topicsAsync = ref.watch(topicsProvider);
-    final selectedId = ref.watch(selectedTopicIdProvider);
+    final selectedIndex = ref.watch(selectedTopicIdProvider);
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -26,24 +26,25 @@ class TopicsPanel extends ConsumerWidget {
                 return const Text('Empty (first run).');
               }
               return Column(
-                children: topics.map((t) {
-                  final selected = t.id == selectedId;
+                children: List.generate(topics.length, (i) {
+                  final t = topics[i];
+                  final selected = i == selectedIndex;
                   return Card(
                     child: ListTile(
                       dense: true,
                       title: Text(
-                        t.title,
+                        t.topic,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       trailing: selected ? const Icon(Icons.check_circle) : null,
                       onTap: () {
-                        ref.read(selectedTopicIdProvider.notifier).state = t.id;
-                        ref.read(editableTopicProvider.notifier).state = t;
+                        ref.read(selectedTopicIdProvider.notifier).set(i);
+                        ref.read(editableTopicProvider.notifier).set(t);
                       },
                     ),
                   );
-                }).toList(),
+                }),
               );
             },
             loading: () => const LinearProgressIndicator(),
@@ -53,8 +54,11 @@ class TopicsPanel extends ConsumerWidget {
           TextButton.icon(
             onPressed: () {
               ref.read(topicsProvider.notifier).clear();
-              ref.read(selectedTopicIdProvider.notifier).state = null;
-              ref.read(editableTopicProvider.notifier).state = null;
+              ref.read(selectedTopicIdProvider.notifier).set(null);
+              ref.read(expandedTopicIdProvider.notifier).close();
+              ref.read(editableTopicProvider.notifier).set(null);
+              ref.read(storyProvider.notifier).clear();
+              ref.read(postsProvider.notifier).clear();
             },
             icon: const Icon(Icons.clear),
             label: const Text('Clear topics'),

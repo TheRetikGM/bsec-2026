@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
+import '../../services/story_gen_service.dart';
 
 class HistoryPanel extends ConsumerStatefulWidget {
   const HistoryPanel({super.key});
@@ -86,17 +87,24 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: () async {
-              final api = ref.read(apiClientProvider);
-              final items = await api.fetchHistoryByUsernames(
-                youtube: _yt.text.trim(),
-                tiktok: _tt.text.trim(),
-                instagram: _ig.text.trim(),
-              );
-              await ref.read(historyProvider.notifier).mergeMany(items);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Fetched ${items.length} items.')),
-                );
+              try {
+                final items = await ref.read(storyGenServiceProvider).fetchHistoryByUsernames(
+                      youtube: _yt.text.trim(),
+                      tiktok: _tt.text.trim(),
+                      instagram: _ig.text.trim(),
+                    );
+                await ref.read(historyProvider.notifier).mergeMany(items);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Fetched ${items.length} items.')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Fetch failed: $e')),
+                  );
+                }
               }
             },
             icon: const Icon(Icons.cloud_download),
@@ -110,27 +118,20 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           historyAsync.when(
             data: (items) {
               if (items.isEmpty) return const Text('No history yet.');
-              final newest = items.take(8).toList();
+              final newest = items.take(12).toList();
               return Column(
-                children: newest.map((h) {
-                  return Card(
-                    child: ListTile(
-                      dense: true,
-                      title: Text(
-                        h.selectedTopicTitle.isEmpty ? '(no topic)' : h.selectedTopicTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '${h.createdAt.toLocal()} • attachments: ${h.attachmentCount}'
-                        '${h.story == null ? '' : ' • story ✅'}'
-                        '${h.platform_stories == null ? '' : ' • posts ✅'}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  );
-                }).toList(),
+                children: newest
+                    .map((h) => Card(
+                          child: ListTile(
+                            dense: true,
+                            title: Text(
+                              h.selectedTopicTitle.isEmpty ? '(no topic)' : h.selectedTopicTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ))
+                    .toList(),
               );
             },
             loading: () => const LinearProgressIndicator(),

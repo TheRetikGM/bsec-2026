@@ -57,54 +57,58 @@ class _PreviewBody extends ConsumerWidget {
   final int currentPageIndex;
   const _PreviewBody({required this.currentPageIndex});
 
+  static const trending = <String>[
+    'AI tools for creators (2026)',
+    'Hook formulas that boost retention',
+    'From one long video to 10 shorts',
+    'Instagram reels growth strategy',
+    'Editing checklist for short-form',
+    'How to validate topics fast',
+    'Avoiding “AI generic” content',
+    'Storytelling structure for 30s videos',
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (currentPageIndex == 0) {
-      final topicsAsync = ref.watch(topicsProvider);
-      return topicsAsync.when(
-        data: (topics) {
-          if (topics.isEmpty) return const Text('No topics yet. Generate from the prompt.');
-          return ListView(
-            children: topics
-                .take(10)
-                .map((t) => ListTile(
-                      dense: true,
-                      title: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ))
-                .toList(),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text('Error: $e'),
+      return ListView(
+        children: trending
+            .map((t) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.trending_up),
+                  title: Text(t, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  onTap: () => ref.read(promptTextProvider.notifier).set(t),
+                ))
+            .toList(),
       );
     }
 
     if (currentPageIndex == 1) {
       final topics = ref.watch(topicsProvider).value ?? const [];
-      final selectedId = ref.watch(selectedTopicIdProvider);
-      final selected = selectedId == null
-          ? null
-          : topics.where((t) => t.id == selectedId).cast<dynamic>().firstOrNull;
-
-      if (selected == null) {
+      final idx = ref.watch(selectedTopicIdProvider);
+      if (idx == null || idx < 0 || idx >= topics.length) {
         return const Text('Select a topic to continue.');
       }
 
+      final profile = ref.watch(editableTopicProvider) ?? topics[idx];
       final story = ref.watch(storyProvider).value;
+
       return ListView(
         children: [
-          Text(selected.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(profile.topic, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text('Hook: ${selected.hook}', maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
-          Text('Angle: ${selected.angle}', maxLines: 3, overflow: TextOverflow.ellipsis),
+          Text('Goal: ${profile.goal}', maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 6),
+          Text('Target: ${profile.target_group}', maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 6),
+          Text('Tone: ${profile.tone}', maxLines: 2, overflow: TextOverflow.ellipsis),
           const Divider(),
           Text(story == null ? 'Story not generated yet.' : 'Story ready ✅',
               style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Text(
-            story == null ? 'Click to open the story page and generate.' : story.overview,
-            maxLines: 10,
+            story == null ? 'Open story page or click generate on the selected topic.' : story.story,
+            maxLines: 12,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -132,8 +136,4 @@ class _PreviewBody extends ConsumerWidget {
 
     return const SizedBox.shrink();
   }
-}
-
-extension _FirstOrNullExt<E> on Iterable<E> {
-  E? get firstOrNull => isEmpty ? null : first;
 }

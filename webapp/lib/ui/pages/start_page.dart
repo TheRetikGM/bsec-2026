@@ -7,17 +7,6 @@ class StartPage extends ConsumerWidget {
   final VoidCallback onNavigateToTopics;
   const StartPage({super.key, required this.onNavigateToTopics});
 
-  static const trending = <String>[
-    'AI tools for creators (2026)',
-    'Hook formulas that boost retention',
-    'From one long video to 10 shorts',
-    'Instagram reels growth strategy',
-    'Editing checklist for short-form',
-    'How to validate topics fast',
-    'Avoiding “AI generic” content',
-    'Storytelling structure for 30s videos',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final promptText = ref.watch(promptTextProvider);
@@ -32,22 +21,26 @@ class StartPage extends ConsumerWidget {
       children: [
         Row(
           children: const [
-            FlutterLogo(size: 44),
-            SizedBox(width: 12),
+            FlutterLogo(size: 72),
+            SizedBox(width: 14),
             Expanded(
-              child: Text('Multi-Agent Content Studio',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              child: Text(
+                'Multi-Agent Content Studio',
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        const Text('Prompt (text + images). Paste from clipboard.',
-            style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
+        const Text(
+          'Prompt (text + images). Paste from clipboard.',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        const SizedBox(height: 10),
         TextField(
           controller: promptCtrl,
-          minLines: 5,
-          maxLines: 10,
+          minLines: 4,
+          maxLines: 16,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'Describe your idea… (or leave empty to “Try it yourself”)',
@@ -92,7 +85,7 @@ class StartPage extends ConsumerWidget {
           const Text('Attached images', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           SizedBox(
-            height: 92,
+            height: 96,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: attachments.length,
@@ -102,8 +95,8 @@ class StartPage extends ConsumerWidget {
                 return Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(a.bytes, width: 92, height: 92, fit: BoxFit.cover),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(a.bytes, width: 96, height: 96, fit: BoxFit.cover),
                     ),
                     Positioned(
                       top: 2,
@@ -137,19 +130,6 @@ class StartPage extends ConsumerWidget {
               onNavigateToTopics();
             },
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text('Trending (tap to use)', style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: trending
-              .map((t) => ActionChip(
-                    label: Text(t),
-                    onPressed: () => ref.read(promptTextProvider.notifier).set(t),
-                  ))
-              .toList(),
         ),
       ],
     );

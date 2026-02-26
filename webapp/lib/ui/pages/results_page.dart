@@ -18,7 +18,7 @@ class ResultsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final outputsAsync = ref.watch(postsProvider);
-    final topic = ref.watch(editableTopicProvider);
+    final profile = ref.watch(editableTopicProvider);
     final promptText = ref.watch(promptTextProvider);
     final attachmentCount = ref.watch(promptAttachmentsProvider).length;
 
@@ -76,7 +76,7 @@ class ResultsPage extends ConsumerWidget {
                       createdAt: DateTime.now(),
                       promptText: promptText,
                       attachmentCount: attachmentCount,
-                      selectedTopicTitle: topic?.title ?? '',
+                      selectedTopicTitle: profile?.topic ?? '',
                       platform_stories: platform_stories,
                     );
                     await ref.read(historyProvider.notifier).add(item);
