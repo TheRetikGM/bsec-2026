@@ -17,7 +17,7 @@ class ResultsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final outputsAsync = ref.watch(outputsProvider);
+    final outputsAsync = ref.watch(postsProvider);
     final topic = ref.watch(editableTopicProvider);
     final promptText = ref.watch(promptTextProvider);
     final attachmentCount = ref.watch(promptAttachmentsProvider).length;
@@ -39,7 +39,7 @@ class ResultsPage extends ConsumerWidget {
             onPressed: outputsAsync.isLoading
                 ? null
                 : () async {
-                    await ref.read(outputsProvider.notifier).generate();
+                    await ref.read(postsProvider.notifier).generate();
                   },
             icon: const Icon(Icons.refresh),
             label: const Text('Regenerate'),
@@ -89,7 +89,7 @@ class ResultsPage extends ConsumerWidget {
                       const SizedBox(height: 10),
                       _PreviewBlock(title: 'TikTok', text: out.tiktok),
                       const SizedBox(height: 10),
-                      _PreviewBlock(title: 'Telegram', text: out.telegram),
+                      _PreviewBlock(title: 'Instagram', text: out.instagram),
                     ],
                   );
                 }
@@ -100,7 +100,7 @@ class ResultsPage extends ConsumerWidget {
                     const SizedBox(height: 12),
                     _OutputCard(title: 'TikTok', text: out.tiktok),
                     const SizedBox(height: 12),
-                    _OutputCard(title: 'Telegram', text: out.telegram),
+                    _OutputCard(title: 'Instagram', text: out.instagram),
                   ],
                 );
               },

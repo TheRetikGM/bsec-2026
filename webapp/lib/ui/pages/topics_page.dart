@@ -6,135 +6,116 @@ import '../../core/state.dart';
 
 class TopicsPage extends ConsumerWidget {
   final VoidCallback onBackToStart;
-  final VoidCallback onNextToResults;
-  final bool preview;
+  final VoidCallback onNextToStory;
 
   const TopicsPage({
     super.key,
     required this.onBackToStart,
-    required this.onNextToResults,
-    this.preview = false,
+    required this.onNextToStory,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topicsAsync = ref.watch(topicsProvider);
+    final expandedId = ref.watch(expandedTopicIdProvider);
     final selectedId = ref.watch(selectedTopicIdProvider);
-    final editable = ref.watch(editableTopicProvider);
-    final settings = ref.watch(globalSettingsProvider);
-    final outputsAsync = ref.watch(outputsProvider);
-
-    final header = Row(
-      children: [
-        if (!preview)
-          IconButton(
-            tooltip: 'Back',
-            onPressed: onBackToStart,
-            icon: const Icon(Icons.arrow_back),
-          ),
-        if (!preview) const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Generated topics',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-        ),
-        if (!preview)
-          TextButton.icon(
-            onPressed: (outputsAsync.value == null) ? null : onNextToResults,
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('Next'),
-          ),
-      ],
-    );
+    final settings = ref.watch(settingsProvider);
 
     return Padding(
-      padding: EdgeInsets.all(preview ? 10 : 14),
+      padding: const EdgeInsets.all(14),
       child: Column(
         children: [
-          if (!preview) header,
-          if (preview)
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Topics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            ),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Back to start',
+                onPressed: onBackToStart,
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Generated topics',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              ),
+              TextButton.icon(
+                onPressed: (selectedId == null) ? null : onNextToStory,
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Next'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _GlobalSettingsCard(
+            settings: settings,
+            onChanged: (s) => ref.read(settingsProvider.notifier).update(s),
+          ),
           const SizedBox(height: 10),
-          if (!preview)
-            _GlobalSettingsCard(
-              settings: settings,
-              onChanged: (s) => ref.read(globalSettingsProvider.notifier).state = s,
-            ),
-          if (!preview) const SizedBox(height: 10),
           Expanded(
             child: topicsAsync.when(
               data: (topics) {
                 if (topics.isEmpty) {
-                  return Center(
-                    child: Text(preview ? 'No topics yet.' : 'No topics yet. Go back and generate.'),
-                  );
+                  return const Center(child: Text('No topics yet. Go back and generate.'));
                 }
 
-                // Ensure selection exists
-                final effectiveSelectedId = selectedId ?? topics.first.id;
-                if (selectedId == null && !preview) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ref.read(selectedTopicIdProvider.notifier).state = topics.first.id;
-                    ref.read(editableTopicProvider.notifier).state = topics.first;
-                  });
-                }
+                return ListView.separated(
+                  itemCount: topics.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    final t = topics[i];
+                    final isExpanded = expandedId == t.id;
 
-                final effectiveEditable =
-                    (editable != null && editable.id == effectiveSelectedId)
-                        ? editable
-                        : topics.firstWhere((t) => t.id == effectiveSelectedId, orElse: () => topics.first);
-
-                return Card(
-                  child: ListView.builder(
-                    itemCount: topics.length,
-                    itemBuilder: (context, i) {
-                      final t = topics[i];
-                      final isOpen = t.id == effectiveSelectedId;
-
-                      return Column(
+                    return Card(
+                      child: Column(
                         children: [
                           ListTile(
                             title: Text(t.title),
                             subtitle: Text(t.angle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            trailing: Icon(preview ? Icons.chevron_right : (isOpen ? Icons.expand_less : Icons.expand_more)),
-                            onTap: preview
-                                ? null
-                                : () {
-                                    ref.read(selectedTopicIdProvider.notifier).state = t.id;
-                                    ref.read(editableTopicProvider.notifier).state = t;
-                                  },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isExpanded)
+                                  IconButton(
+                                    tooltip: 'Close',
+                                    icon: const Icon(Icons.expand_less),
+                                    onPressed: () => ref.read(expandedTopicIdProvider.notifier).close(),
+                                  )
+                                else
+                                  IconButton(
+                                    tooltip: 'Open details',
+                                    icon: const Icon(Icons.expand_more),
+                                    onPressed: () => ref.read(expandedTopicIdProvider.notifier).toggle(t.id),
+                                  ),
+                              ],
+                            ),
+                            onTap: () {
+                              // select + toggle dropdown (allows close by tapping again)
+                              ref.read(selectedTopicIdProvider.notifier).set(t.id);
+                              ref.read(editableTopicProvider.notifier).set(t);
+                              ref.read(postsProvider.notifier).clear();
+                              ref.read(storyProvider.notifier).clear();
+                              ref.read(expandedTopicIdProvider.notifier).toggle(t.id);
+                            },
                           ),
                           AnimatedCrossFade(
-                            duration: const Duration(milliseconds: 220),
-                            crossFadeState: isOpen && !preview
-                                ? CrossFadeState.showSecond
-                                : CrossFadeState.showFirst,
+                            crossFadeState:
+                                isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                            duration: const Duration(milliseconds: 180),
                             firstChild: const SizedBox.shrink(),
-                            secondChild: (isOpen && !preview)
-                                ? _TopicDropdownEditor(
-                                    key: ValueKey('editor_${t.id}'),
-                                    topic: effectiveEditable,
-                                    onChanged: (next) => ref
-                                        .read(editableTopicProvider.notifier)
-                                        .state = next,
-                                    onGenerateOutputs: () async {
-                                      await ref
-                                          .read(outputsProvider.notifier)
-                                          .generate();
-                                      if (context.mounted) onNextToResults();
-                                    },
-                                  )
-                                : const SizedBox.shrink(),
+                            secondChild: Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: TopicDetailsEditor(
+                                key: ValueKey('details_${t.id}'),
+                                initialTopic: ref.watch(editableTopicProvider) ?? t,
+                                onChanged: (next) {
+                                  ref.read(editableTopicProvider.notifier).set(next);
+                                },
+                              ),
+                            ),
                           ),
-                          if (i != topics.length - 1) const Divider(height: 1),
                         ],
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -151,10 +132,7 @@ class _GlobalSettingsCard extends StatelessWidget {
   final GlobalSettings settings;
   final ValueChanged<GlobalSettings> onChanged;
 
-  const _GlobalSettingsCard({
-    required this.settings,
-    required this.onChanged,
-  });
+  const _GlobalSettingsCard({required this.settings, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -171,85 +149,60 @@ class _GlobalSettingsCard extends StatelessWidget {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: settings.language,
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'sk', child: Text('Slovak')),
+                      DropdownMenuItem(value: 'cs', child: Text('Czech')),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Language',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'en', child: Text('English')),
-                      DropdownMenuItem(value: 'cs', child: Text('Czech')),
-                      DropdownMenuItem(value: 'sk', child: Text('Slovak')),
-                    ],
-                    onChanged: (v) {
-                      if (v == null) return;
-                      onChanged(settings.copyWith(language: v));
-                    },
+                    onChanged: (v) => onChanged(settings.copyWith(language: v ?? settings.language)),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: settings.tone,
-                    decoration: const InputDecoration(
-                      labelText: 'Tone',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'professional', child: Text('Professional')),
-                      DropdownMenuItem(value: 'casual', child: Text('Casual')),
-                      DropdownMenuItem(value: 'funny', child: Text('Funny')),
-                    ],
-                    onChanged: (v) {
-                      if (v == null) return;
-                      onChanged(settings.copyWith(tone: v));
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
                     value: settings.length,
-                    decoration: const InputDecoration(
-                      labelText: 'Length',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
                     items: const [
                       DropdownMenuItem(value: 'short', child: Text('Short')),
                       DropdownMenuItem(value: 'medium', child: Text('Medium')),
                       DropdownMenuItem(value: 'long', child: Text('Long')),
                     ],
-                    onChanged: (v) {
-                      if (v == null) return;
-                      onChanged(settings.copyWith(length: v));
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Hashtags'),
-                    value: settings.includeHashtags,
-                    onChanged: (v) => onChanged(settings.copyWith(includeHashtags: v)),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Emojis'),
-                    value: settings.includeEmojis,
-                    onChanged: (v) => onChanged(settings.copyWith(includeEmojis: v)),
+                    decoration: const InputDecoration(
+                      labelText: 'Length',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (v) => onChanged(settings.copyWith(length: v ?? settings.length)),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              initialValue: settings.tone,
+              decoration: const InputDecoration(
+                labelText: 'Tone',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              onChanged: (v) => onChanged(settings.copyWith(tone: v.trim().isEmpty ? settings.tone : v.trim())),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: settings.includeHashtags,
+              onChanged: (v) => onChanged(settings.copyWith(includeHashtags: v)),
+              title: const Text('Include hashtags'),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: settings.includeEmojis,
+              onChanged: (v) => onChanged(settings.copyWith(includeEmojis: v)),
+              title: const Text('Include emojis'),
             ),
           ],
         ),
@@ -258,69 +211,100 @@ class _GlobalSettingsCard extends StatelessWidget {
   }
 }
 
-class _TopicDropdownEditor extends StatelessWidget {
-  final Topic topic;
+class TopicDetailsEditor extends StatefulWidget {
+  final Topic initialTopic;
   final ValueChanged<Topic> onChanged;
-  final VoidCallback onGenerateOutputs;
 
-  const _TopicDropdownEditor({
+  const TopicDetailsEditor({
     super.key,
-    required this.topic,
+    required this.initialTopic,
     required this.onChanged,
-    required this.onGenerateOutputs,
   });
 
   @override
+  State<TopicDetailsEditor> createState() => _TopicDetailsEditorState();
+}
+
+class _TopicDetailsEditorState extends State<TopicDetailsEditor> {
+  late Topic _topic;
+  late TextEditingController _hook;
+  late TextEditingController _angle;
+  late TextEditingController _keyPoints;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncFrom(widget.initialTopic);
+  }
+
+  @override
+  void didUpdateWidget(covariant TopicDetailsEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTopic.id != widget.initialTopic.id) {
+      _syncFrom(widget.initialTopic);
+    }
+  }
+
+  void _syncFrom(Topic t) {
+    _topic = t;
+    _hook = TextEditingController(text: t.hook);
+    _angle = TextEditingController(text: t.angle);
+    _keyPoints = TextEditingController(text: t.keyPoints.join('\n'));
+  }
+
+  @override
+  void dispose() {
+    _hook.dispose();
+    _angle.dispose();
+    _keyPoints.dispose();
+    super.dispose();
+  }
+
+  void _emit() {
+    final next = _topic.copyWith(
+      hook: _hook.text.trim(),
+      angle: _angle.text.trim(),
+      keyPoints: _keyPoints.text
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
+    );
+    widget.onChanged(next);
+    setState(() => _topic = next);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Use initialValue fields (keyed by topic id) so it resets when selection changes.
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          const Text('Detail', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          TextFormField(
-            key: ValueKey('hook_${topic.id}'),
-            initialValue: topic.hook,
-            decoration: const InputDecoration(labelText: 'Hook', border: OutlineInputBorder()),
-            onChanged: (v) => onChanged(topic.copyWith(hook: v)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        const Text('Details', style: TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _hook,
+          decoration: const InputDecoration(labelText: 'Hook', border: OutlineInputBorder()),
+          onChanged: (_) => _emit(),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _angle,
+          decoration: const InputDecoration(labelText: 'Angle', border: OutlineInputBorder()),
+          onChanged: (_) => _emit(),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _keyPoints,
+          minLines: 4,
+          maxLines: 8,
+          decoration: const InputDecoration(
+            labelText: 'Key points (1 per line)',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 10),
-          TextFormField(
-            key: ValueKey('angle_${topic.id}'),
-            initialValue: topic.angle,
-            decoration: const InputDecoration(labelText: 'Angle', border: OutlineInputBorder()),
-            onChanged: (v) => onChanged(topic.copyWith(angle: v)),
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            key: ValueKey('kp_${topic.id}'),
-            initialValue: topic.keyPoints.join('\n'),
-            minLines: 5,
-            maxLines: 10,
-            decoration: const InputDecoration(
-              labelText: 'Key points (1 per line)',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (v) {
-              final kps = v
-                  .split('\n')
-                  .map((e) => e.trim())
-                  .where((e) => e.isNotEmpty)
-                  .toList();
-              onChanged(topic.copyWith(keyPoints: kps));
-            },
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onGenerateOutputs,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Generate outputs'),
-          ),
-        ],
-      ),
+          onChanged: (_) => _emit(),
+        ),
+      ],
     );
   }
 }

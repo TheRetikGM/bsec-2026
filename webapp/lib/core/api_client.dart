@@ -16,18 +16,18 @@ class ApiClient {
 
   /// POST /v1/topics/suggest
   /// Request:
-  ///   { "promptText": "...", "attachments": [{id, base64}, ...] }
+  ///   { "promptText": "...", "attachments": [{id, base64}, ...], "settings": {...} }
   /// Response:
   ///   { "topics": [{...Topic fields...}, ...] }
   Future<List<Topic>> suggestTopics({
     required String promptText,
     required List<PromptAttachment> attachments,
-    GlobalSettings? settings,
+    required GlobalSettings settings,
   }) async {
     final payload = {
       'promptText': promptText,
       'attachments': attachments.map((a) => a.toJson()).toList(),
-      if (settings != null) 'settings': settings.toJson(),
+      'settings': settings.toJson(),
     };
 
     try {
@@ -39,44 +39,62 @@ class ApiClient {
           .map((e) => Topic.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (_) {
-      // Fallback: local mock (so UI works immediately)
       return _mockTopics(promptText.isEmpty ? 'Trending' : promptText);
     }
   }
 
-  /// POST /v1/content/generate
-  /// Request: { "topic": { ... } }
-  /// Response: { "youtube": "...", "tiktok": "...", "telegram": "..." }
-  Future<GeneratedOutputs> generateOutputs({required Topic topic, GlobalSettings? settings}) async {
-    final payload = {'topic': topic.toJson(), if (settings != null) 'settings': settings.toJson()};
+  /// POST /v1/story/overview
+  /// Request: { "topic": {...}, "settings": {...} }
+  /// Response: { "title": "...", "overview": "...", "beats": ["...", ...] }
+  Future<StoryOverview> generateStoryOverview({
+    required Topic topic,
+    required GlobalSettings settings,
+  }) async {
+    final payload = {
+      'topic': topic.toJson(),
+      'settings': settings.toJson(),
+    };
     try {
-      final res = await _dio.post('/v1/content/generate', data: payload);
-      return GeneratedOutputs.fromJson(res.data as Map<String, dynamic>);
+      final res = await _dio.post('/v1/story/overview', data: payload);
+      return StoryOverview.fromJson(res.data as Map<String, dynamic>);
     } catch (_) {
-      // Fallback mock
-      return GeneratedOutputs(
-        youtube:
-            'YouTube Script\n\nHook: ${topic.hook}\n\n${topic.keyPoints.map((e) => '• $e').join('\n')}\n\nCTA: Subscribe.',
-        tiktok:
-            'TikTok Scenario\n\n0-2s: ${topic.hook}\n2-12s: ${topic.keyPoints.take(3).join(' / ')}\n12-18s: Punchline + CTA',
-        telegram:
-            'Telegram Post\n\n${topic.title}\n\n${topic.keyPoints.map((e) => '— $e').join('\n')}\n\nReply with “MORE” for part 2.',
-      );
+      return _mockStory(topic, settings);
     }
   }
 
-  /// GET /v1/history?youtube=...&tiktok=...&telegram=...
+  /// POST /v1/posts/generate
+  /// Request: { "topic": {...}, "story": {...}, "settings": {...} }
+  /// Response: { "youtube": "...", "tiktok": "...", "instagram": "..." }
+  Future<GeneratedOutputs> generatePosts({
+    required Topic topic,
+    required StoryOverview story,
+    required GlobalSettings settings,
+  }) async {
+    final payload = {
+      'topic': topic.toJson(),
+      'story': story.toJson(),
+      'settings': settings.toJson(),
+    };
+    try {
+      final res = await _dio.post('/v1/posts/generate', data: payload);
+      return GeneratedOutputs.fromJson(res.data as Map<String, dynamic>);
+    } catch (_) {
+      return _mockPosts(topic, story, settings);
+    }
+  }
+
+  /// GET /v1/history?youtube=...&tiktok=...&instagram=...
   /// Response: { "history": [ ...HistoryItem... ] }
   Future<List<HistoryItem>> fetchHistoryByUsernames({
     required String youtube,
     required String tiktok,
-    required String telegram,
+    required String instagram,
   }) async {
     try {
       final res = await _dio.get('/v1/history', queryParameters: {
         'youtube': youtube,
         'tiktok': tiktok,
-        'telegram': telegram,
+        'instagram': instagram,
       });
       final data = res.data as Map<String, dynamic>;
       final list = (data['history'] as List?) ?? const [];
@@ -99,10 +117,10 @@ class ApiClient {
       'Mistakes when using AI for content',
       'Content repurposing system',
       'From long video to short clips',
-      'Telegram channel growth tactics',
+      'Instagram growth with reels',
     ]..shuffle(r);
 
-    return List.generate(8, (i) {
+    return List.generate(10, (i) {
       final title = picks[i % picks.length];
       return Topic(
         id: 't_${seed.hashCode}_$i',
@@ -117,5 +135,39 @@ class ApiClient {
         ],
       );
     });
+  }
+
+  StoryOverview _mockStory(Topic topic, GlobalSettings settings) {
+    final overview = 'Overview story for: ${topic.title}\n\n'
+        'This piece follows a simple narrative: a common pain → a surprise insight → '
+        'a concrete, repeatable system → a clear payoff.\n\n'
+        'Tone: ${settings.tone} • Language: ${settings.language} • Length: ${settings.length}';
+    return StoryOverview(
+      title: topic.title,
+      overview: overview,
+      beats: const [
+        'Cold open: call out the pain in one sentence',
+        'Reveal: the 1 idea that changes the approach',
+        'Steps: 3 actionable moves viewers can copy',
+        'Pitfall: what people do wrong + fix',
+        'Payoff: what improves and how fast',
+        'CTA: ask for comment/save/follow',
+      ],
+    );
+  }
+
+  GeneratedOutputs _mockPosts(Topic topic, StoryOverview story, GlobalSettings settings) {
+    final beats = story.beats.map((e) => '• $e').join('\n');
+    return GeneratedOutputs(
+      youtube: 'YouTube Script\n\n${story.overview}\n\nBeats:\n$beats\n\nCTA: Subscribe + comment “SYSTEM”.',
+      tiktok: 'TikTok Scenario (20–35s)\n\n0–2s: ${topic.hook}\n'
+          '2–18s: 3 steps from the story\n'
+          '18–28s: Pitfall + fix\n'
+          '28–35s: CTA (follow + save)\n\nNotes: ${settings.tone}',
+      instagram: 'Instagram Caption\n\n${topic.title}\n\n'
+          '${story.beats.take(5).map((e) => '— $e').join('\n')}\n\n'
+          '${settings.includeHashtags ? '#content #creator #ai' : ''}'
+          '${settings.includeEmojis ? ' ✨🚀' : ''}',
+    );
   }
 }

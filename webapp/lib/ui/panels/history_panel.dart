@@ -13,13 +13,13 @@ class HistoryPanel extends ConsumerStatefulWidget {
 class _HistoryPanelState extends ConsumerState<HistoryPanel> {
   final _yt = TextEditingController();
   final _tt = TextEditingController();
-  final _tg = TextEditingController();
+  final _ig = TextEditingController();
 
   @override
   void dispose() {
     _yt.dispose();
     _tt.dispose();
-    _tg.dispose();
+    _ig.dispose();
     super.dispose();
   }
 
@@ -34,10 +34,8 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           Row(
             children: [
               const Expanded(
-                child: Text(
-                  'History',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
+                child: Text('History',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
               IconButton(
                 tooltip: 'Import JSON',
@@ -78,9 +76,9 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           ),
           const SizedBox(height: 8),
           TextField(
-            controller: _tg,
+            controller: _ig,
             decoration: const InputDecoration(
-              labelText: 'Telegram username',
+              labelText: 'Instagram username',
               border: OutlineInputBorder(),
               isDense: true,
             ),
@@ -92,7 +90,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
               final items = await api.fetchHistoryByUsernames(
                 youtube: _yt.text.trim(),
                 tiktok: _tt.text.trim(),
-                telegram: _tg.text.trim(),
+                instagram: _ig.text.trim(),
               );
               await ref.read(historyProvider.notifier).mergeMany(items);
               if (context.mounted) {
@@ -111,25 +109,22 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           const SizedBox(height: 8),
           historyAsync.when(
             data: (items) {
-              if (items.isEmpty) {
-                return const Text('No history yet.');
-              }
-              final newest = items.take(6).toList();
+              if (items.isEmpty) return const Text('No history yet.');
+              final newest = items.take(8).toList();
               return Column(
                 children: newest.map((h) {
                   return Card(
                     child: ListTile(
                       dense: true,
                       title: Text(
-                        h.selectedTopicTitle.isEmpty
-                            ? '(no topic)'
-                            : h.selectedTopicTitle,
+                        h.selectedTopicTitle.isEmpty ? '(no topic)' : h.selectedTopicTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
                         '${h.createdAt.toLocal()} • attachments: ${h.attachmentCount}'
-                        '${h.outputs == null ? '' : ' • outputs ✅'}',
+                        '${h.story == null ? '' : ' • story ✅'}'
+                        '${h.outputs == null ? '' : ' • posts ✅'}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -11,7 +11,7 @@ class StartPage extends ConsumerWidget {
     'AI tools for creators (2026)',
     'Hook formulas that boost retention',
     'From one long video to 10 shorts',
-    'Telegram channel growth strategy',
+    'Instagram reels growth strategy',
     'Editing checklist for short-form',
     'How to validate topics fast',
     'Avoiding “AI generic” content',
@@ -35,18 +35,14 @@ class StartPage extends ConsumerWidget {
             FlutterLogo(size: 44),
             SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Multi-Agent Content Studio',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-              ),
+              child: Text('Multi-Agent Content Studio',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Prompt (text + images). Paste from clipboard or add files.',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        const Text('Prompt (text + images). Paste from clipboard.',
+            style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: promptCtrl,
@@ -56,7 +52,7 @@ class StartPage extends ConsumerWidget {
             border: OutlineInputBorder(),
             hintText: 'Describe your idea… (or leave empty to “Try it yourself”)',
           ),
-          onChanged: (v) => ref.read(promptTextProvider.notifier).state = v,
+          onChanged: (v) => ref.read(promptTextProvider.notifier).set(v),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -69,20 +65,15 @@ class StartPage extends ConsumerWidget {
                 final current = ref.read(promptTextProvider);
 
                 if (res.text != null && res.text!.trim().isNotEmpty) {
-                  ref.read(promptTextProvider.notifier).state =
-                      (current.trim().isEmpty)
-                          ? res.text!.trim()
-                          : '$current\n${res.text!.trim()}';
+                  ref.read(promptTextProvider.notifier).set(
+                      (current.trim().isEmpty) ? res.text!.trim() : '$current\n${res.text!.trim()}');
                 }
                 for (final img in res.images) {
                   ref.read(promptAttachmentsProvider.notifier).addBytes(img);
                 }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Pasted: text=${res.text != null}, images=${res.images.length}'),
-                    ),
+                    SnackBar(content: Text('Pasted: text=${res.text != null}, images=${res.images.length}')),
                   );
                 }
               },
@@ -90,9 +81,7 @@ class StartPage extends ConsumerWidget {
               label: const Text('Paste'),
             ),
             OutlinedButton.icon(
-              onPressed: attachments.isEmpty
-                  ? null
-                  : () => ref.read(promptAttachmentsProvider.notifier).clear(),
+              onPressed: attachments.isEmpty ? null : () => ref.read(promptAttachmentsProvider.notifier).clear(),
               icon: const Icon(Icons.delete_outline),
               label: const Text('Clear images'),
             ),
@@ -100,8 +89,7 @@ class StartPage extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         if (attachments.isNotEmpty) ...[
-          const Text('Attached images',
-              style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Attached images', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           SizedBox(
             height: 92,
@@ -115,8 +103,7 @@ class StartPage extends ConsumerWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(a.bytes,
-                          width: 92, height: 92, fit: BoxFit.cover),
+                      child: Image.memory(a.bytes, width: 92, height: 92, fit: BoxFit.cover),
                     ),
                     Positioned(
                       top: 2,
@@ -124,9 +111,7 @@ class StartPage extends ConsumerWidget {
                       child: IconButton(
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.close),
-                        onPressed: () => ref
-                            .read(promptAttachmentsProvider.notifier)
-                            .remove(a.id),
+                        onPressed: () => ref.read(promptAttachmentsProvider.notifier).remove(a.id),
                       ),
                     )
                   ],
@@ -139,28 +124,32 @@ class StartPage extends ConsumerWidget {
         Center(
           child: _CircleGenerateButton(
             isBusy: topicsAsync.isLoading,
-            label: (promptText.trim().isEmpty && attachments.isEmpty)
-                ? 'Try it\nYourself'
-                : 'Generate\nTopics',
+            label: (promptText.trim().isEmpty && attachments.isEmpty) ? 'Try it\nYourself' : 'Generate\nTopics',
             onPressed: () async {
+              // Reset downstream selections
+              ref.read(selectedTopicIdProvider.notifier).set(null);
+              ref.read(expandedTopicIdProvider.notifier).close();
+              ref.read(editableTopicProvider.notifier).set(null);
+              ref.read(storyProvider.notifier).clear();
+              ref.read(postsProvider.notifier).clear();
+
               await ref.read(topicsProvider.notifier).generateFromPrompt();
               onNavigateToTopics();
             },
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Trending (tap to use)',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('Trending (tap to use)', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: trending.map((t) {
-            return ActionChip(
-              label: Text(t),
-              onPressed: () => ref.read(promptTextProvider.notifier).state = t,
-            );
-          }).toList(),
+          children: trending
+              .map((t) => ActionChip(
+                    label: Text(t),
+                    onPressed: () => ref.read(promptTextProvider.notifier).set(t),
+                  ))
+              .toList(),
         ),
       ],
     );
@@ -191,12 +180,7 @@ class _CircleGenerateButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: cs.primary,
           boxShadow: const [
-            BoxShadow(
-              blurRadius: 18,
-              spreadRadius: 1,
-              offset: Offset(0, 8),
-              color: Colors.black26,
-            )
+            BoxShadow(blurRadius: 18, spreadRadius: 1, offset: Offset(0, 8), color: Colors.black26),
           ],
         ),
         child: Center(
@@ -204,19 +188,12 @@ class _CircleGenerateButton extends StatelessWidget {
               ? const SizedBox(
                   width: 42,
                   height: 42,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 4,
-                  ),
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 4),
                 )
               : Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
                 ),
         ),
       ),
