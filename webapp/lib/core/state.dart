@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 
@@ -28,8 +29,7 @@ class PromptAttachmentsNotifier extends StateNotifier<List<PromptAttachment>> {
   PromptAttachmentsNotifier() : super(const []);
 
   void addBytes(List<int> bytes) {
-    final id =
-        'img_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
+    final id = 'img_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
     state = [...state, PromptAttachment(id: id, bytes: Uint8List.fromList(bytes))];
   }
 
@@ -74,7 +74,8 @@ Topic? findSelectedTopic(WidgetRef ref, List<Topic> topics) {
 
 final editableTopicProvider = StateProvider<Topic?>((ref) => null);
 
-final outputsProvider = AsyncNotifierProvider<OutputsNotifier, GeneratedOutputs?>(OutputsNotifier.new);
+final outputsProvider =
+    AsyncNotifierProvider<OutputsNotifier, GeneratedOutputs?>(OutputsNotifier.new);
 
 class OutputsNotifier extends AsyncNotifier<GeneratedOutputs?> {
   @override
@@ -92,7 +93,8 @@ class OutputsNotifier extends AsyncNotifier<GeneratedOutputs?> {
   void clear() => state = const AsyncData(null);
 }
 
-final historyProvider = AsyncNotifierProvider<HistoryNotifier, List<HistoryItem>>(HistoryNotifier.new);
+final historyProvider =
+    AsyncNotifierProvider<HistoryNotifier, List<HistoryItem>>(HistoryNotifier.new);
 
 class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
   @override
@@ -113,20 +115,19 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
   }
 
   Future<void> add(HistoryItem item) async {
-    final next = [item, ...state ?? const []]
+    final next = [item, ...state.value ?? const <HistoryItem>[]]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    state = AsyncData(next);
+    state = AsyncValue.data(next);
     await _persist(next);
   }
 
   Future<void> mergeMany(List<HistoryItem> incoming) async {
-    final existing = state ?? const [];
-    final byId = <String, HistoryItem>{for (final e in existing) e.id: e};
+    final existing = state;
+    final byId = <String, HistoryItem>{for (final e in existing.value ?? []) e.id: e};
     for (final i in incoming) {
       byId[i.id] = i;
     }
-    final next = byId.values.toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final next = byId.values.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     state = AsyncData(next);
     await _persist(next);
   }
@@ -138,7 +139,9 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
 
   Future<void> importFromJsonFile() async {
     final file = await openFile(
-      acceptedTypeGroups: [const XTypeGroup(extensions: ['json'])],
+      acceptedTypeGroups: [
+        const XTypeGroup(extensions: ['json'])
+      ],
     );
     if (file == null) return;
 
@@ -152,18 +155,18 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
   }
 
   Future<void> exportToJsonFile() async {
-    final items = state ?? const [];
-    final jsonText = historyToPrettyJson(items);
+    final items = state;
+    final jsonText = historyToPrettyJson(items.value ?? []);
 
-    final path = await getSavePath(suggestedName: 'history.json');
-    if (path == null) return;
+    // final path = await getSavePath(suggestedName: 'history.json');
+    // if (path == null) return;
 
-    final out = XFile.fromData(
-      utf8.encode(jsonText),
-      mimeType: 'application/json',
-      name: 'history.json',
-    );
-    await out.saveTo(path);
+    // final out = XFile.fromData(
+    //   utf8.encode(jsonText),
+    //   mimeType: 'application/json',
+    //   name: 'history.json',
+    // );
+    // await out.saveTo(path);
   }
 
   Future<void> _persist(List<HistoryItem> items) async {
@@ -176,7 +179,7 @@ class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
 /// Clipboard paste helper (text + images) using super_clipboard.
 Future<({String? text, List<Uint8List> images})> readClipboardTextAndImages() async {
   final clipboard = SystemClipboard.instance;
-  if (clipboard == null) return (text: null, images: const []);
+  if (clipboard == null) return (text: null, images: const <Uint8List>[]);
 
   final reader = await clipboard.read();
   String? text;
