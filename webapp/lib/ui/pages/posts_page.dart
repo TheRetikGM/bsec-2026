@@ -92,7 +92,7 @@ class PostsPage extends ConsumerWidget {
                   // Note: HistoryModel currently stores YT/IG/TikTok only.
                   if (profile == null || story == null) return;
 
-                  final id = Random(32).nextInt(0x7FFFFFFFFFFFFFFF);
+                  final id = Random(32).nextInt(10000);
                   final item = HistoryModel(
                     id: id,
                     date: DateTime.now(),

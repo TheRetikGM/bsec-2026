@@ -75,7 +75,7 @@ class StoryGenService {
 
       if (v is Map) {
         // 1. Target the 'text_goal' field
-        final textGoal = v['text_goal'];
+        final textGoal = v['communication_style'];
 
         if (textGoal is Map) {
           // 2. Extract 'description' from within 'text_goal'
