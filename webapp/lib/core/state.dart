@@ -16,7 +16,6 @@ import 'package:super_clipboard/super_clipboard.dart';
 
 import 'models.dart';
 
-const _kHistoryKey = 'history_items_v3';
 
 // Pages: 0 Start -> 1 Topics -> 2 Story -> 3 Posts
 final pageIndexProvider = NotifierProvider<PageIndexNotifier, int>(PageIndexNotifier.new);
@@ -184,6 +183,19 @@ class StoryNotifier extends AsyncNotifier<StoryModel?> {
 }
 
 /// Platform posts/scenarios
+///
+/// The user can choose which platform outputs to generate/show.
+/// This is stored so the Posts page can use the last selection for regenerations.
+final selectedPlatformsProvider =
+    NotifierProvider<SelectedPlatformsNotifier, Set<String>>(SelectedPlatformsNotifier.new);
+
+class SelectedPlatformsNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {'youtube', 'instagram', 'tiktok', 'email'};
+
+  void set(Set<String> v) => state = {...v};
+}
+
 final postsProvider =
     AsyncNotifierProvider<PostsNotifier, PlatformStoriesModel?>(PostsNotifier.new);
 
@@ -191,13 +203,18 @@ class PostsNotifier extends AsyncNotifier<PlatformStoriesModel?> {
   @override
   Future<PlatformStoriesModel?> build() async => null;
 
-  Future<void> generate() async {
+  Future<void> generate({Set<String>? platforms}) async {
     final story = ref.read(storyProvider).value;
     if (story == null) return;
 
+    if (platforms != null) {
+      ref.read(selectedPlatformsProvider.notifier).set(platforms);
+    }
+
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-        () => ref.read(storyGenServiceProvider).createPlatformStories(story));
+      () => ref.read(storyGenServiceProvider).createPlatformStories(story),
+    );
   }
 
   void clear() => state = const AsyncData(null);

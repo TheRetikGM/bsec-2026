@@ -17,9 +17,9 @@ class YoutubeStoryModel {
 
   factory YoutubeStoryModel.fromJson(Map<String, dynamic> json) {
     return YoutubeStoryModel(
-      title: json['title'] as String,
-      description: json['description'] as String,
-      scenario: json['scenario'] as String,
+      title: "",
+      description: json['content'] as String,
+      scenario: "",
     );
   }
 }

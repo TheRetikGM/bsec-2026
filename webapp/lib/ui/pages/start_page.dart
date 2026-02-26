@@ -116,9 +116,11 @@ class StartPage extends ConsumerWidget {
           const SizedBox(height: 16),
         ],
         Center(
-          child: _CircleGenerateButton(
+          child: _RoundedGenerateButton(
             isBusy: topicsAsync.isLoading,
-            label: (promptText.trim().isEmpty && attachments.isEmpty) ? 'Try it\nYourself' : 'Generate\nTopics',
+            label: (promptText.trim().isEmpty && attachments.isEmpty)
+                ? 'Try it yourself'
+                : 'Generate topics',
             onPressed: () async {
               // Reset downstream selections
               ref.read(selectedTopicIdProvider.notifier).set(null);
@@ -137,12 +139,12 @@ class StartPage extends ConsumerWidget {
   }
 }
 
-class _CircleGenerateButton extends StatelessWidget {
+class _RoundedGenerateButton extends StatelessWidget {
   final bool isBusy;
   final String label;
   final VoidCallback onPressed;
 
-  const _CircleGenerateButton({
+  const _RoundedGenerateButton({
     required this.isBusy,
     required this.label,
     required this.onPressed,
@@ -150,31 +152,29 @@ class _CircleGenerateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: isBusy ? null : onPressed,
-      child: Container(
-        width: 170,
-        height: 170,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: cs.primary,
-          boxShadow: const [
-            BoxShadow(blurRadius: 18, spreadRadius: 1, offset: Offset(0, 8), color: Colors.black26),
-          ],
-        ),
-        child: Center(
-          child: isBusy
-              ? AnimatedDotsText(
-                  'Generating',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
-                )
-              : Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
-                ),
+    return SizedBox(
+      width: 280,
+      height: 56,
+      child: FilledButton.icon(
+        onPressed: isBusy ? null : onPressed,
+        icon: isBusy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.auto_awesome),
+        label: isBusy
+            ? const AnimatedDotsText(
+                'Generating',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              )
+            : Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
       ),
     );

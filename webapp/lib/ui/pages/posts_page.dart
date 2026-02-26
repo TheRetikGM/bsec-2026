@@ -1,9 +1,9 @@
 import 'dart:math';
 
-import 'package:ai_redakcia_frontend/models/history_models/Instagram_history_model.dart';
 import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
-import 'package:ai_redakcia_frontend/models/history_models/tiktok_history_model.dart';
-import 'package:ai_redakcia_frontend/models/history_models/youtube_history_model.dart';
+import 'package:ai_redakcia_frontend/models/story_models/insta_story_model.dart';
+import 'package:ai_redakcia_frontend/models/story_models/tiktok_story_model.dart';
+import 'package:ai_redakcia_frontend/models/story_models/youtube_story_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,10 +18,14 @@ class PostsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final postsAsync = ref.watch(postsProvider);
+    final selectedPlatforms = ref.watch(selectedPlatformsProvider);
     final profile = ref.watch(editableTopicProvider);
     final story = ref.watch(storyProvider).value;
     final promptText = ref.watch(promptTextProvider);
-    final attachmentCount = ref.watch(promptAttachmentsProvider).length;
+
+    Future<void> regenerate({Set<String>? picked}) async {
+      await ref.read(postsProvider.notifier).generate();
+    }
 
     return Padding(
       padding: const EdgeInsets.all(14),
@@ -36,15 +40,13 @@ class PostsPage extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               const Expanded(
-                child: Text('Generated posts',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                child: Text(
+                  'Generated posts',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
               ),
               TextButton.icon(
-                onPressed: postsAsync.isLoading
-                    ? null
-                    : () async {
-                        await ref.read(postsProvider.notifier).generate();
-                      },
+                onPressed: postsAsync.isLoading ? null : () => regenerate(),
                 icon: const Icon(Icons.refresh),
                 label: postsAsync.isLoading
                     ? const AnimatedDotsText('Generating')
@@ -66,18 +68,18 @@ class PostsPage extends ConsumerWidget {
                           const Text('No posts yet.',
                               style: TextStyle(fontWeight: FontWeight.w800)),
                           const SizedBox(height: 8),
-                          const Text('Go back and generate story, then posts.'),
+                          const Text('Go back and generate story, then platform outputs.'),
                           const SizedBox(height: 12),
                           FilledButton.icon(
-                            onPressed: (profile == null || story == null)
+                            onPressed: (profile == null || story == null || postsAsync.isLoading)
                                 ? null
                                 : () async {
-                                    await ref.read(postsProvider.notifier).generate();
+                                    await regenerate();
                                   },
-                            icon: const Icon(Icons.play_arrow),
+                            icon: const Icon(Icons.auto_fix_high),
                             label: postsAsync.isLoading
                                 ? const AnimatedDotsText('Generating')
-                                : const Text('Generate posts'),
+                                : const Text('Generate for platforms'),
                           ),
                         ],
                       ),
@@ -86,36 +88,64 @@ class PostsPage extends ConsumerWidget {
                 }
 
                 WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  // Persist generated outputs in local history (used for later imports/analysis).
+                  // Note: HistoryModel currently stores YT/IG/TikTok only.
+                  if (profile == null || story == null) return;
+
                   final id = Random(32).nextInt(0x7FFFFFFFFFFFFFFF);
                   final item = HistoryModel(
                     id: id,
                     date: DateTime.now(),
                     promptText: promptText,
-                    topic: profile?.topic ?? '',
+                    topic: profile.topic,
                     story: story,
-                    yt_model: out.yt_story as YoutubeHistoryModel,
-                    tiktokmodel: out.tiktok_story as TikTokHistoryModel,
-                    insta_model: out.insta_story as InstagramHistoryModel,
+                    yt_model: out.yt_story.toHistory(),
+                    tiktokmodel: out.tiktok_story.toHistory(),
+                    insta_model: out.insta_story.toHistory(),
                   );
                   await ref.read(historyProvider.notifier).add(item);
                 });
 
-                final ytText =
-                    'Title: ${out.yt_story.title}\n\nDescription:\n${out.yt_story.description}\n\nScenario:\n${out.yt_story.scenario}';
-                final ttText =
-                    'Description:\n${out.tiktok_story.description}\n\nScenario:\n${out.tiktok_story.scenario}';
-                final igText =
-                    'Caption:\n${out.insta_story.description}\n\nPhoto description:\n${out.insta_story.photo_description}';
+                final ytText = out.yt_story.description;
+                final ttText = out.tiktok_story.description;
+                final igText = out.insta_story.description;
 
-                return ListView(
-                  children: [
-                    _OutputCard(title: 'YouTube', text: ytText),
-                    const SizedBox(height: 12),
-                    _OutputCard(title: 'TikTok', text: ttText),
-                    const SizedBox(height: 12),
-                    _OutputCard(title: 'Instagram', text: igText),
-                  ],
-                );
+                final cards = <Widget>[];
+                void addCard(String title, String text) {
+                  if (cards.isNotEmpty) cards.add(const SizedBox(height: 12));
+                  cards.add(_OutputCard(title: title, text: text));
+                }
+
+                if (selectedPlatforms.contains('youtube')) addCard('YouTube', ytText);
+                if (selectedPlatforms.contains('tiktok')) addCard('TikTok', ttText);
+                if (selectedPlatforms.contains('instagram')) addCard('Instagram', igText);
+
+                if (cards.isEmpty) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'No platforms selected.',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('Select at least one platform to display outputs.'),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: postsAsync.isLoading ? null : () => regenerate(),
+                            icon: const Icon(Icons.tune),
+                            label: const Text('Select platforms'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView(children: cards);
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
@@ -140,33 +170,38 @@ class _OutputCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(
-            children: [
-              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
-              IconButton(
-                tooltip: 'Copy',
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: text));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied.')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.copy),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: ctrl,
-            minLines: 8,
-            maxLines: 20,
-            readOnly: true,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-          ),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
+                IconButton(
+                  tooltip: 'Copy',
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: text));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Copied.')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.copy),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              minLines: 8,
+              maxLines: 20,
+              readOnly: true,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -15,8 +15,8 @@ class TikTokStoryModel {
 
   factory TikTokStoryModel.fromJson(Map<String, dynamic> json) {
     return TikTokStoryModel(
-      description: json['description'] as String,
-      scenario: json['scenario'] as String,
+      description: json['content'] as String,
+      scenario: "" as String,
     );
   }
 }

@@ -15,8 +15,8 @@ class InstaStoryModel {
 
   factory InstaStoryModel.fromJson(Map<String, dynamic> json) {
     return InstaStoryModel(
-      description: json['description'] as String,
-      photo_description: json['photo_description'] as String,
+      description: json['content'] as String,
+      photo_description: "" as String,
     );
   }
 }

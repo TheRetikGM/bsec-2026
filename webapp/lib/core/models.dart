@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:ai_redakcia_frontend/models/platform_stories_model.dart';
-import 'package:ai_redakcia_frontend/models/story_model.dart';
-
 class GlobalSettings {
   final String language;
   final String length; // short/medium/long
@@ -50,55 +47,3 @@ class PromptAttachment {
         bytes: base64Decode((json['base64'] ?? '').toString()),
       );
 }
-
-// class HistoryItem {
-//   final String id;
-//   final DateTime createdAt;
-//   final String promptText;
-//   final int attachmentCount;
-//   final String selectedTopicTitle;
-//   final StoryModel? story;
-//   final PlatformStoriesModel? platform_stories;
-
-//   const HistoryItem({
-//     required this.id,
-//     required this.createdAt,
-//     required this.promptText,
-//     required this.attachmentCount,
-//     required this.selectedTopicTitle,
-//     required this.platform_stories,
-//     this.story,
-//   });
-
-//   Map<String, dynamic> toJson() => {
-//         'id': id,
-//         'createdAt': createdAt.toIso8601String(),
-//         'promptText': promptText,
-//         'attachmentCount': attachmentCount,
-//         'selectedTopicTitle': selectedTopicTitle,
-//         'story': story?.toJson(),
-//         'outputs': platform_stories?.toJson(),
-//       };
-
-//   static HistoryItem fromJson(Map<String, dynamic> json) => HistoryItem(
-//         id: (json['id'] ?? '').toString(),
-//         createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()) ??
-//             DateTime.fromMillisecondsSinceEpoch(0),
-//         promptText: (json['promptText'] ?? '').toString(),
-//         attachmentCount: (json['attachmentCount'] is int)
-//             ? (json['attachmentCount'] as int)
-//             : int.tryParse((json['attachmentCount'] ?? '0').toString()) ?? 0,
-//         selectedTopicTitle: (json['selectedTopicTitle'] ?? '').toString(),
-//         story: (json['story'] is Map<String, dynamic>)
-//             ? StoryModel.fromJson(json['story'] as Map<String, dynamic>)
-//             : null,
-//         platform_stories: (json['outputs'] is Map<String, dynamic>)
-//             ? PlatformStoriesModel.fromJson(json['outputs'] as Map<String, dynamic>)
-//             : null,
-//       );
-// }
-
-// String historyToPrettyJson(List<HistoryItem> items) {
-//   final arr = items.map((e) => e.toJson()).toList();
-//   return const JsonEncoder.withIndent('  ').convert(arr);
-// }
