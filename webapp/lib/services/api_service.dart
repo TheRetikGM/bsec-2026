@@ -36,7 +36,7 @@ class ApiService {
 
 /// Sends a GET request to [path] with optional query parameters.
 /// Returns decoded JSON response as Map<String, dynamic>
-Future<Map<String, dynamic>> getJson({
+Future<dynamic> getJson({
   required String path,
   Map<String, String>? queryParameters,
   Map<String, String>? headers,
@@ -72,7 +72,12 @@ Future<Map<String, dynamic>> getJson({
       if (responseBody.isEmpty) {
         return {};
       }
-      return jsonDecode(responseBody);
+      try {
+        return jsonDecode(responseBody);
+      } on FormatException {
+        // Some endpoints may return plain text.
+        return responseBody;
+      }
     } else {
       throw ApiException(
         statusCode: statusCode,

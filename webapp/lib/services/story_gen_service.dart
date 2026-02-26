@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ai_redakcia_frontend/models/history_models/Instagram_history_model.dart';
 import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
 import 'package:ai_redakcia_frontend/models/history_models/tiktok_history_model.dart';
@@ -27,8 +29,6 @@ class StoryGenService {
         body: topic.toJson(),
       );
 
-      print(response);
-
       final profilesJson = response as List<dynamic>;
 
       return profilesJson.map((e) => ProfileModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -39,8 +39,8 @@ class StoryGenService {
 
   Future<StoryModel> writeStory(ProfileModel topic) async {
     final json = await _apiService.postJson(
-      path: '/webhook-test/writer',
-      // path: '/webhook/writer',
+      // path: '/webhook-test/writer',
+      path: '/webhook/writer',
       body: topic.toJson(),
     );
 
@@ -56,39 +56,43 @@ class StoryGenService {
     return PlatformStoriesModel.fromJson(json);
   }
 
-  Future<List<HistoryModel>> fetchHistoryByUsernames({
-    required String youtube,
-    required String tiktok,
-    required String instagram,
-  }) async {
-    final json = await _apiService.getJson(
-      path: '/webhook-test/import_memory',
-      // queryParameters: {
-      //   'youtube': youtube,
-      //   'tiktok': tiktok,
-      //   'instagram': instagram,
-      // },
-    );
+  /// Uploads the user's history to the API.
+  ///
+  /// The API is expected to return a short text description of user characteristics.
+  /// This method tries to extract a text field from common response shapes.
+Future<String?> submitHistory(List<HistoryModel> histories) async {
+  final jsonList = histories.map((history) => history.toJson()).toList();
 
-    final list = (json['history'] as List?) ?? const [];
-    return list
-        .whereType<Map>()
-        .map((e) => HistoryModel.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+  final resp = await _apiService.postJson(
+    path: '/webhook/import_memory',
+    body: jsonList,
+  );
+
+  String? extractText(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v;
+
+    if (v is Map) {
+      // 1. Target the 'text_goal' field
+      final textGoal = v['communication_style'];
+
+      if (textGoal is Map) {
+        // 2. Extract 'description' from within 'text_goal'
+        final description = textGoal['description'];
+        if (description is String && description.trim().isNotEmpty) {
+          return description;
+        }
+      } 
+      
+      // Optional: Fallback to top-level description if text_goal is missing
+      if (v['description'] is String) return v['description'];
+    }
+
+    return null;
   }
 
-  Future<bool> submitHistory(List<HistoryModel> histories) async {
-    final jsonList = histories.map((history) => history.toJson()).toList();
-
-    final json = await _apiService.postJson(
-      path: '/webhook-test/import_memory',
-      body: jsonList,
-    );
-
-    if (json == {}) return false;
-
-    return true;
-  }
+  return extractText(resp);
+}
 
   Future<bool> submitYoutubeHistory(List<YoutubeHistoryModel> youtube_histories) async {
     final jsonList = youtube_histories.map((history) => history.toJson()).toList();

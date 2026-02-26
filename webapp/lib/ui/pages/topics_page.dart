@@ -21,6 +21,7 @@ class TopicsPage extends ConsumerWidget {
     final expandedIndex = ref.watch(expandedTopicIdProvider);
     final selectedIndex = ref.watch(selectedTopicIdProvider);
     final settings = ref.watch(settingsProvider);
+    final storyAsync = ref.watch(storyProvider);
 
     return Padding(
       padding: const EdgeInsets.all(14),
@@ -65,6 +66,7 @@ class TopicsPage extends ConsumerWidget {
                     final p = topics[i];
                     final isExpanded = expandedIndex == i;
                     final isSelected = selectedIndex == i;
+                    final isGeneratingThis = storyAsync.isLoading && isSelected;
 
                     return Card(
                       child: Column(
@@ -81,8 +83,16 @@ class TopicsPage extends ConsumerWidget {
                               children: [
                                 IconButton(
                                   tooltip: 'Generate story',
-                                  icon: const Icon(Icons.auto_awesome),
-                                  onPressed: () async {
+                                  icon: isGeneratingThis
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.auto_awesome),
+                                  onPressed: storyAsync.isLoading
+                                      ? null
+                                      : () async {
                                     ref.read(selectedTopicIdProvider.notifier).set(i);
                                     ref.read(editableTopicProvider.notifier).set(p);
                                     ref.read(storyProvider.notifier).clear();
@@ -191,19 +201,6 @@ class _GlobalSettingsCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: settings.includeHashtags,
-              onChanged: (v) => onChanged(settings.copyWith(includeHashtags: v)),
-              title: const Text('Include hashtags'),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: settings.includeEmojis,
-              onChanged: (v) => onChanged(settings.copyWith(includeEmojis: v)),
-              title: const Text('Include emojis'),
-            ),
           ],
         ),
       ),
@@ -228,36 +225,63 @@ class ProfileDetailsEditor extends StatefulWidget {
 class _ProfileDetailsEditorState extends State<ProfileDetailsEditor> {
   late ProfileModel _p;
 
-  late TextEditingController _theme;
-  late TextEditingController _goal;
-  late TextEditingController _target;
-  late TextEditingController _mainThought;
-  late TextEditingController _tone;
-  late TextEditingController _idea;
+  late final TextEditingController _theme;
+  late final TextEditingController _goal;
+  late final TextEditingController _target;
+  late final TextEditingController _mainThought;
+  late final TextEditingController _tone;
+  late final TextEditingController _idea;
 
   @override
   void initState() {
     super.initState();
-    _sync(widget.initialProfile);
+    _p = widget.initialProfile;
+    _theme = TextEditingController(text: _p.topic);
+    _goal = TextEditingController(text: _p.goal);
+    _target = TextEditingController(text: _p.target_group);
+    _mainThought = TextEditingController(text: _p.main_thought);
+    _tone = TextEditingController(text: _p.tone);
+    _idea = TextEditingController(text: _p.idea);
   }
 
   @override
   void didUpdateWidget(covariant ProfileDetailsEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialProfile != widget.initialProfile) {
-      _sync(widget.initialProfile);
+    // Avoid resetting controllers during typing.
+    // Only resync if an external update changes the underlying values.
+    if (!_sameProfile(widget.initialProfile, _p)) {
+      _syncControllers(widget.initialProfile);
     }
   }
 
-  void _sync(ProfileModel p) {
+  bool _sameProfile(ProfileModel a, ProfileModel b) {
+    return a.topic == b.topic &&
+        a.goal == b.goal &&
+        a.target_group == b.target_group &&
+        a.main_thought == b.main_thought &&
+        a.tone == b.tone &&
+        a.idea == b.idea;
+  }
+
+  void _setTextIfDifferent(TextEditingController c, String nextText) {
+    if (c.text == nextText) return;
+    final prevSelection = c.selection;
+    final nextOffset = prevSelection.baseOffset.clamp(0, nextText.length);
+    c.value = c.value.copyWith(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+      composing: TextRange.empty,
+    );
+  }
+
+  void _syncControllers(ProfileModel p) {
     _p = p;
-    _theme = TextEditingController(text: p.topic);
-    _goal = TextEditingController(text: p.goal);
-    _target = TextEditingController(text: p.target_group);
-    _mainThought = TextEditingController(text: p.main_thought);
-    _tone = TextEditingController(text: p.tone);
-    _idea = TextEditingController(text: p.idea);
-    setState(() {});
+    _setTextIfDifferent(_theme, p.topic);
+    _setTextIfDifferent(_goal, p.goal);
+    _setTextIfDifferent(_target, p.target_group);
+    _setTextIfDifferent(_mainThought, p.main_thought);
+    _setTextIfDifferent(_tone, p.tone);
+    _setTextIfDifferent(_idea, p.idea);
   }
 
   @override

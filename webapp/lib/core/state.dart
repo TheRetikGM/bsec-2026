@@ -42,11 +42,53 @@ class SettingsNotifier extends Notifier<GlobalSettings> {
   GlobalSettings build() => const GlobalSettings(
         language: 'en',
         length: 'medium',
-        includeHashtags: true,
-        includeEmojis: false,
       );
 
   void update(GlobalSettings s) => state = s;
+}
+
+/// User characteristics text returned by history upload.
+final userCharacteristicsProvider =
+    AsyncNotifierProvider<UserCharacteristicsNotifier, String?>(UserCharacteristicsNotifier.new);
+
+class UserCharacteristicsNotifier extends AsyncNotifier<String?> {
+  static const _kKey = 'user_characteristics_text';
+
+  @override
+  Future<String?> build() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kKey);
+    return (raw == null || raw.trim().isEmpty) ? null : raw;
+  }
+
+  Future<void> clear() async => set(null);
+
+  Future<void> set(String? text) async {
+    state = AsyncData(text);
+    final prefs = await SharedPreferences.getInstance();
+    if (text == null || text.trim().isEmpty) {
+      await prefs.remove(_kKey);
+    } else {
+      await prefs.setString(_kKey, text);
+    }
+  }
+
+  /// Calls the API to analyze the given history list and stores the returned text.
+  Future<void> analyzeFromHistory(List<HistoryModel> histories) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final text = await ref.read(storyGenServiceProvider).submitHistory(histories);
+      final normalized = (text ?? '').trim();
+      // Persist only on success.
+      final prefs = await SharedPreferences.getInstance();
+      if (normalized.isEmpty) {
+        await prefs.remove(_kKey);
+        return null;
+      }
+      await prefs.setString(_kKey, normalized);
+      return normalized;
+    });
+  }
 }
 
 final promptAttachmentsProvider =

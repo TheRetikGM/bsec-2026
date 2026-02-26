@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
-import '../../services/story_gen_service.dart';
 import '../pages/history_detail_page.dart';
 import '../widgets/animated_dots_text.dart';
 
@@ -14,10 +13,6 @@ class HistoryPanel extends ConsumerStatefulWidget {
 }
 
 class _HistoryPanelState extends ConsumerState<HistoryPanel> {
-  final _yt = TextEditingController();
-  final _tt = TextEditingController();
-  final _ig = TextEditingController();
-
   bool _submittingHistory = false;
 
   String _fmtDate(DateTime d) {
@@ -27,15 +22,13 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
 
   @override
   void dispose() {
-    _yt.dispose();
-    _tt.dispose();
-    _ig.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(historyProvider);
+    final characteristicsAsync = ref.watch(userCharacteristicsProvider);
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -65,6 +58,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                         );
                         if (ok == true) {
                           await ref.read(historyProvider.notifier).clear();
+                          await ref.read(userCharacteristicsProvider.notifier).clear();
                         }
                       },
               ),
@@ -101,12 +95,16 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                             );
                           }
 
-                          await ref.read(storyGenServiceProvider).submitHistory(histories);
+                          // Submit history to API and store returned user characteristics.
+                          await ref
+                              .read(userCharacteristicsProvider.notifier)
+                              .analyzeFromHistory(histories);
 
                           if (context.mounted) {
                             Navigator.of(context, rootNavigator: true).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('History submitted.')),
+                              const SnackBar(
+                                  content: Text('History submitted. User characteristics updated.')),
                             );
                           }
                         } catch (e) {
@@ -131,59 +129,60 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text('Fetch history by username', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _yt,
-            decoration: const InputDecoration(
-              labelText: 'YouTube username',
-              border: OutlineInputBorder(),
-              isDense: true,
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('User characteristics',
+                            style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                      IconButton(
+                        tooltip: 'Re-analyze current history',
+                        onPressed: _submittingHistory
+                            ? null
+                            : () async {
+                                final histories = ref.read(historyProvider).value ?? const [];
+                                if (histories.isEmpty) return;
+                                try {
+                                  setState(() => _submittingHistory = true);
+                                  await ref
+                                      .read(userCharacteristicsProvider.notifier)
+                                      .analyzeFromHistory(histories);
+                                } finally {
+                                  if (mounted) setState(() => _submittingHistory = false);
+                                }
+                              },
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  characteristicsAsync.when(
+                    data: (text) {
+                      if (text == null || text.trim().isEmpty) {
+                        return const Text(
+                            'Import history to generate a short description of the user based on past posts.');
+                      }
+                      return SelectableText(text);
+                    },
+                    loading: () => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AnimatedDotsText('Analyzing history'),
+                        SizedBox(height: 10),
+                        LinearProgressIndicator(),
+                      ],
+                    ),
+                    error: (e, _) => Text('Error: $e'),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _tt,
-            decoration: const InputDecoration(
-              labelText: 'TikTok username',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _ig,
-            decoration: const InputDecoration(
-              labelText: 'Instagram username',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: () async {
-              try {
-                final items = await ref.read(storyGenServiceProvider).fetchHistoryByUsernames(
-                      youtube: _yt.text.trim(),
-                      tiktok: _tt.text.trim(),
-                      instagram: _ig.text.trim(),
-                    );
-                await ref.read(historyProvider.notifier).mergeMany(items);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Fetched ${items.length} items.')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Fetch failed: $e')),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.cloud_download),
-            label: const Text('Fetch'),
           ),
           const SizedBox(height: 14),
           const Divider(),
