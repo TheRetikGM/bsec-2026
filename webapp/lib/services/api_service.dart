@@ -15,7 +15,7 @@ class ApiService {
 
   /// Sends a POST request with JSON body to [path]
   /// Returns decoded JSON response as Map<String, dynamic>
-  Future<Map<String, dynamic>> postJson({
+  Future<dynamic> postJson({
     required String path,
     required Object body,
     Map<String, String>? headers,
@@ -30,7 +30,6 @@ class ApiService {
       },
       body: jsonEncode(body),
     );
-
     return _handleResponse(response);
   }
 
@@ -64,15 +63,19 @@ Future<Map<String, dynamic>> getJson({
   }
 
   /// Internal: Handle response + errors
-  Map<String, dynamic> _handleResponse(http.Response response) {
+  dynamic _handleResponse(http.Response response) {
     final statusCode = response.statusCode;
     final responseBody = response.body;
+
 
     if (statusCode >= 200 && statusCode < 300) {
       if (responseBody.isEmpty) {
         return {};
       }
-      return jsonDecode(responseBody) as Map<String, dynamic>;
+      print(responseBody);
+      print("dfljasjflasdja");
+      print(jsonDecode(responseBody));
+      return jsonDecode(responseBody);
     } else {
       throw ApiException(
         statusCode: statusCode,

@@ -1,3 +1,5 @@
+import 'package:ai_redakcia_frontend/models/history_models/tiktok_history_model.dart';
+
 class TikTokStoryModel {
   final String description;
   final String scenario;
@@ -15,6 +17,18 @@ class TikTokStoryModel {
     return TikTokStoryModel(
       description: json['description'] as String,
       scenario: json['scenario'] as String,
+    );
+  }
+}
+
+extension TikTokStoryMapping on TikTokStoryModel {
+  /// Maps TikTokStoryModel to TikTokHistoryModel
+  /// [views] defaults to 0 for new history entries.
+  TikTokHistoryModel toHistory({int views = 0}) {
+    return TikTokHistoryModel(
+      description: description, // Maps to 'TikTok_popis'
+      scenario: scenario, // Maps to 'TikTok_scénář'
+      views: 0, // Maps to 'TikTok_views'
     );
   }
 }

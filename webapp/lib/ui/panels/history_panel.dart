@@ -35,28 +35,28 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           Row(
             children: [
               const Expanded(
-                child: Text('History',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                child: Text('History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
               IconButton(
                 tooltip: 'Import JSON',
                 icon: const Icon(Icons.file_open),
                 onPressed: () async {
                   await ref.read(historyProvider.notifier).importFromJsonFile();
+                  final histories = ref.read(historyProvider).value!;
+                  await ref.read(storyGenServiceProvider).submitHistory(histories);
                 },
               ),
               IconButton(
                 tooltip: 'Export JSON',
                 icon: const Icon(Icons.save_alt),
                 onPressed: () async {
-                  await ref.read(historyProvider.notifier).exportToJsonFile();
+                  // await ref.read(historyProvider.notifier).exportToJsonFile();
                 },
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Text('Fetch history by username',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Fetch history by username', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           TextField(
             controller: _yt,
@@ -125,7 +125,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                           child: ListTile(
                             dense: true,
                             title: Text(
-                              h.selectedTopicTitle.isEmpty ? '(no topic)' : h.selectedTopicTitle,
+                              h.topic.isEmpty ? '(no topic)' : h.topic,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

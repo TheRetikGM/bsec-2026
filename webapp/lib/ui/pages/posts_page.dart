@@ -1,8 +1,13 @@
+import 'dart:math';
+
+import 'package:ai_redakcia_frontend/models/history_models/Instagram_history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/tiktok_history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/youtube_history_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models.dart';
 import '../../core/state.dart';
 
 class PostsPage extends ConsumerWidget {
@@ -76,15 +81,16 @@ class PostsPage extends ConsumerWidget {
                 }
 
                 WidgetsBinding.instance.addPostFrameCallback((_) async {
-                  final id = 'h_${DateTime.now().millisecondsSinceEpoch}';
-                  final item = HistoryItem(
+                  final id = Random(32).nextInt(0x7FFFFFFFFFFFFFFF);
+                  final item = HistoryModel(
                     id: id,
-                    createdAt: DateTime.now(),
+                    date: DateTime.now(),
                     promptText: promptText,
-                    attachmentCount: attachmentCount,
-                    selectedTopicTitle: profile?.topic ?? '',
+                    topic: profile?.topic ?? '',
                     story: story,
-                    platform_stories: out,
+                    yt_model: out.yt_story as YoutubeHistoryModel,
+                    tiktokmodel: out.tiktok_story as TikTokHistoryModel,
+                    insta_model: out.insta_story as InstagramHistoryModel,
                   );
                   await ref.read(historyProvider.notifier).add(item);
                 });

@@ -283,7 +283,7 @@ class _ProfileDetailsEditorState extends State<ProfileDetailsEditor> {
 
   void _emit() {
     final next = _p.copyWith(
-      theme: _theme.text.trim(),
+      topic: _theme.text.trim(),
       goal: _goal.text.trim(),
       target_group: _target.text.trim(),
       main_thought: _mainThought.text.trim(),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
 import 'package:ai_redakcia_frontend/models/platform_stories_model.dart';
 import 'package:ai_redakcia_frontend/models/profile_model.dart';
 import 'package:ai_redakcia_frontend/models/story_model.dart';
@@ -50,7 +51,8 @@ class SettingsNotifier extends Notifier<GlobalSettings> {
 }
 
 final promptAttachmentsProvider =
-    NotifierProvider<PromptAttachmentsNotifier, List<PromptAttachment>>(PromptAttachmentsNotifier.new);
+    NotifierProvider<PromptAttachmentsNotifier, List<PromptAttachment>>(
+        PromptAttachmentsNotifier.new);
 
 class PromptAttachmentsNotifier extends Notifier<List<PromptAttachment>> {
   @override
@@ -69,7 +71,8 @@ class PromptAttachmentsNotifier extends Notifier<List<PromptAttachment>> {
 }
 
 /// Generated topic profiles (ProfileModel list)
-final topicsProvider = AsyncNotifierProvider<TopicsNotifier, List<ProfileModel>>(TopicsNotifier.new);
+final topicsProvider =
+    AsyncNotifierProvider<TopicsNotifier, List<ProfileModel>>(TopicsNotifier.new);
 
 class TopicsNotifier extends AsyncNotifier<List<ProfileModel>> {
   @override
@@ -152,95 +155,96 @@ class PostsNotifier extends AsyncNotifier<PlatformStoriesModel?> {
     if (story == null) return;
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(storyGenServiceProvider).createPlatformStories(story));
+    state = await AsyncValue.guard(
+        () => ref.read(storyGenServiceProvider).createPlatformStories(story));
   }
 
   void clear() => state = const AsyncData(null);
 }
 
-/// History (local JSON)
 final historyProvider =
-    AsyncNotifierProvider<HistoryNotifier, List<HistoryItem>>(HistoryNotifier.new);
+    AsyncNotifierProvider<HistoryNotifier, List<HistoryModel>>(HistoryNotifier.new);
 
-class HistoryNotifier extends AsyncNotifier<List<HistoryItem>> {
+class HistoryNotifier extends AsyncNotifier<List<HistoryModel>> {
+  static const _kHistoryKey = 'history_data';
+
   @override
-  Future<List<HistoryItem>> build() async {
+  Future<List<HistoryModel>> build() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_kHistoryKey);
+
     if (raw == null || raw.trim().isEmpty) return const [];
+
     try {
-      final arr = jsonDecode(raw) as List;
-      final items = arr
-          .whereType<Map>()
-          .map((e) => HistoryItem.fromJson(Map<String, dynamic>.from(e)))
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return items;
-    } catch (_) {
+      final List<dynamic> arr = jsonDecode(raw);
+      return arr.map((e) => HistoryModel.fromJson(Map<String, dynamic>.from(e))).toList()
+        // Sort by date descending (newest first)
+        ..sort((a, b) => b.date.compareTo(a.date));
+    } catch (e) {
+      // In a production app, you might want to log this error
       return const [];
     }
   }
 
-  Future<void> add(HistoryItem item) async {
-    final existing = state.value ?? const <HistoryItem>[];
-    final next = [item, ...existing]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  /// Adds a single HistoryModel to the state
+  Future<void> add(HistoryModel item) async {
+    final existing = state.value ?? <HistoryModel>[];
+    final next = [item, ...existing]..sort((a, b) => b.date.compareTo(a.date));
+
     state = AsyncData(next);
     await _persist(next);
   }
 
-  Future<void> mergeMany(List<HistoryItem> incoming) async {
-    final existing = state.value ?? const <HistoryItem>[];
-    final byId = <String, HistoryItem>{for (final e in existing) e.id: e};
+  /// Merges a list of HistoryModels, overwriting existing IDs
+  Future<void> mergeMany(List<HistoryModel> incoming) async {
+    final existing = state.value ?? <HistoryModel>[];
+
+    // Map items by ID for easy lookup and replacement
+    final byId = <int, HistoryModel>{for (final e in existing) e.id: e};
+
+    // Merge incoming items (overwrites existing items with same ID)
     for (final i in incoming) {
       byId[i.id] = i;
     }
-    final next = byId.values.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final next = byId.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+
     state = AsyncData(next);
     await _persist(next);
   }
 
+  /// Clears all history
   Future<void> clear() async {
     state = const AsyncData([]);
     await _persist(const []);
   }
 
+  /// Imports from a JSON file and merges with existing state
   Future<void> importFromJsonFile() async {
+    // Note: Ensure openFile and XTypeGroup are imported from file_selector or similar
     final file = await openFile(
-      acceptedTypeGroups: [const XTypeGroup(extensions: ['json'])],
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'JSON', extensions: ['json'])
+      ],
     );
     if (file == null) return;
 
-    final text = await file.readAsString();
-    final arr = jsonDecode(text) as List;
-    final items = arr
-        .whereType<Map>()
-        .map((e) => HistoryItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
-    await mergeMany(items);
+    try {
+      final text = await file.readAsString();
+      final List<dynamic> arr = jsonDecode(text);
+      final items = arr.map((e) => HistoryModel.fromJson(Map<String, dynamic>.from(e))).toList();
+
+      await mergeMany(items);
+    } catch (e) {
+      // Handle or log parsing errors
+    }
   }
 
-  Future<void> exportToJsonFile() async {
-    final items = state.value ?? const <HistoryItem>[];
-    final jsonText = historyToPrettyJson(items);
-
-    final location = await getSaveLocation(
-      suggestedName: 'history.json',
-      acceptedTypeGroups: [const XTypeGroup(extensions: ['json'])],
-    );
-    if (location == null) return;
-
-    final out = XFile.fromData(
-      utf8.encode(jsonText),
-      mimeType: 'application/json',
-      name: 'history.json',
-    );
-    await out.saveTo(location.path);
-  }
-
-  Future<void> _persist(List<HistoryItem> items) async {
+  /// Internal method to save to SharedPreferences
+  Future<void> _persist(List<HistoryModel> items) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = jsonEncode(items.map((e) => e.toJson()).toList());
-    await prefs.setString(_kHistoryKey, raw);
+    final String encoded = jsonEncode(items.map((e) => e.toJson()).toList());
+    await prefs.setString(_kHistoryKey, encoded);
   }
 }
 

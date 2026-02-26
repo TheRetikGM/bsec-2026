@@ -16,7 +16,7 @@ class ProfileModel {
   });
 
   ProfileModel copyWith({
-    String? theme,
+    String? topic,
     String? goal,
     String? target_group,
     String? main_thought,
@@ -24,7 +24,7 @@ class ProfileModel {
     String? idea,
   }) {
     return ProfileModel(
-      topic: theme ?? this.topic,
+      topic: topic ?? this.topic,
       goal: goal ?? this.goal,
       target_group: target_group ?? this.target_group,
       main_thought: main_thought ?? this.main_thought,
@@ -53,3 +53,4 @@ class ProfileModel {
     );
   }
 }
+

@@ -1,34 +1,30 @@
-import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
-
-class YoutubeHistoryModel extends HistoryModel {
-  final String topic;
-  final String story;
+class YoutubeHistoryModel {
+  final String title;
+  final String description;
+  final String scenario;
   final int views;
 
   YoutubeHistoryModel({
-    required super.id,
-    required super.date,
-    required this.topic,
-    required this.story,
+    required this.title,
+    required this.description,
     required this.views,
+    required this.scenario,
   });
 
   factory YoutubeHistoryModel.fromJson(Map<String, dynamic> json) {
     return YoutubeHistoryModel(
-      id: json['ID'],
-      date: HistoryModel.excelDateToDateTime(json['Datum']),
-      topic: json['Téma'],
-      story: json['YouTube_scénář'],
+      title: json['YouTube_názov'],
+      description: json['YouTube_popis'],
+      scenario: json['YouTube_scénář'],
       views: json['YouTube_views'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'ID': id,
-      'Datum': HistoryModel.dateTimeToExcelDate(date),
-      'Téma': topic,
-      'YouTube_scénář': story,
+      'YouTube_názov': title,
+      'YouTube_popis': description,
+      'YouTube_scénář': scenario,
       'YouTube_views': views,
     };
   }

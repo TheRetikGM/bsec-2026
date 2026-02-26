@@ -1,3 +1,9 @@
+import 'dart:math';
+
+import 'package:ai_redakcia_frontend/models/history_models/Instagram_history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/tiktok_history_model.dart';
+import 'package:ai_redakcia_frontend/models/history_models/youtube_history_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +27,7 @@ class ResultsPage extends ConsumerWidget {
     final profile = ref.watch(editableTopicProvider);
     final promptText = ref.watch(promptTextProvider);
     final attachmentCount = ref.watch(promptAttachmentsProvider).length;
+    final story = ref.watch(storyProvider).value;
 
     final header = Row(
       children: [
@@ -70,14 +77,16 @@ class ResultsPage extends ConsumerWidget {
                 if (!preview) {
                   // Save to history when outputs appear
                   WidgetsBinding.instance.addPostFrameCallback((_) async {
-                    final id = 'h_${DateTime.now().millisecondsSinceEpoch}';
-                    final item = HistoryItem(
+                    final id = Random(32).nextInt(0x7FFFFFFFFFFFFFFF);
+                    final item = HistoryModel(
                       id: id,
-                      createdAt: DateTime.now(),
+                      date: DateTime.now(),
                       promptText: promptText,
-                      attachmentCount: attachmentCount,
-                      selectedTopicTitle: profile?.topic ?? '',
-                      platform_stories: platform_stories,
+                      topic: profile?.topic ?? '',
+                      story: story,
+                      yt_model: platform_stories.yt_story as YoutubeHistoryModel,
+                      tiktokmodel: platform_stories.tiktok_story as TikTokHistoryModel,
+                      insta_model: platform_stories.insta_story as InstagramHistoryModel,
                     );
                     await ref.read(historyProvider.notifier).add(item);
                   });
