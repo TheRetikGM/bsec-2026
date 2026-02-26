@@ -139,3 +139,50 @@ String historyToPrettyJson(List<HistoryItem> items) {
   final arr = items.map((e) => e.toJson()).toList();
   return const JsonEncoder.withIndent('  ').convert(arr);
 }
+class GlobalSettings {
+  final String language; // e.g. 'en', 'cs', 'sk'
+  final String tone; // e.g. 'professional', 'casual'
+  final String length; // 'short', 'medium', 'long'
+  final bool includeHashtags;
+  final bool includeEmojis;
+
+  const GlobalSettings({
+    required this.language,
+    required this.tone,
+    required this.length,
+    required this.includeHashtags,
+    required this.includeEmojis,
+  });
+
+  GlobalSettings copyWith({
+    String? language,
+    String? tone,
+    String? length,
+    bool? includeHashtags,
+    bool? includeEmojis,
+  }) {
+    return GlobalSettings(
+      language: language ?? this.language,
+      tone: tone ?? this.tone,
+      length: length ?? this.length,
+      includeHashtags: includeHashtags ?? this.includeHashtags,
+      includeEmojis: includeEmojis ?? this.includeEmojis,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'language': language,
+        'tone': tone,
+        'length': length,
+        'includeHashtags': includeHashtags,
+        'includeEmojis': includeEmojis,
+      };
+
+  static GlobalSettings fromJson(Map<String, dynamic> json) => GlobalSettings(
+        language: (json['language'] ?? 'en').toString(),
+        tone: (json['tone'] ?? 'professional').toString(),
+        length: (json['length'] ?? 'medium').toString(),
+        includeHashtags: json['includeHashtags'] == true,
+        includeEmojis: json['includeEmojis'] == true,
+      );
+}

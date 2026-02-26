@@ -7,11 +7,13 @@ import '../../core/state.dart';
 class TopicsPage extends ConsumerWidget {
   final VoidCallback onBackToStart;
   final VoidCallback onNextToResults;
+  final bool preview;
 
   const TopicsPage({
     super.key,
     required this.onBackToStart,
     required this.onNextToResults,
+    this.preview = false,
   });
 
   @override
@@ -19,90 +21,120 @@ class TopicsPage extends ConsumerWidget {
     final topicsAsync = ref.watch(topicsProvider);
     final selectedId = ref.watch(selectedTopicIdProvider);
     final editable = ref.watch(editableTopicProvider);
+    final settings = ref.watch(globalSettingsProvider);
     final outputsAsync = ref.watch(outputsProvider);
 
+    final header = Row(
+      children: [
+        if (!preview)
+          IconButton(
+            tooltip: 'Back',
+            onPressed: onBackToStart,
+            icon: const Icon(Icons.arrow_back),
+          ),
+        if (!preview) const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Generated topics',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+        ),
+        if (!preview)
+          TextButton.icon(
+            onPressed: (outputsAsync.value == null) ? null : onNextToResults,
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('Next'),
+          ),
+      ],
+    );
+
     return Padding(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(preview ? 10 : 14),
       child: Column(
         children: [
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Back to start',
-                onPressed: onBackToStart,
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Generated topics',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: (outputsAsync == null) ? null : onNextToResults,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Next'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+          if (!preview) header,
+          if (preview)
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Topics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ),
+          const SizedBox(height: 10),
+          if (!preview)
+            _GlobalSettingsCard(
+              settings: settings,
+              onChanged: (s) => ref.read(globalSettingsProvider.notifier).state = s,
+            ),
+          if (!preview) const SizedBox(height: 10),
           Expanded(
             child: topicsAsync.when(
               data: (topics) {
                 if (topics.isEmpty) {
-                  return const Center(
-                      child: Text('No topics yet. Go back and generate.'));
+                  return Center(
+                    child: Text(preview ? 'No topics yet.' : 'No topics yet. Go back and generate.'),
+                  );
                 }
 
-                final selected = (selectedId == null)
-                    ? null
-                    : topics.firstWhere(
-                        (t) => t.id == selectedId,
-                        orElse: () => topics.first,
-                      );
+                // Ensure selection exists
+                final effectiveSelectedId = selectedId ?? topics.first.id;
+                if (selectedId == null && !preview) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ref.read(selectedTopicIdProvider.notifier).state = topics.first.id;
+                    ref.read(editableTopicProvider.notifier).state = topics.first;
+                  });
+                }
 
-                return LayoutBuilder(
-                  builder: (context, c) {
-                    final wide = c.maxWidth >= 900;
+                final effectiveEditable =
+                    (editable != null && editable.id == effectiveSelectedId)
+                        ? editable
+                        : topics.firstWhere((t) => t.id == effectiveSelectedId, orElse: () => topics.first);
 
-                    final list = _TopicList(
-                      topics: topics,
-                      selectedId: selectedId,
-                      onSelect: (t) {
-                        ref.read(selectedTopicIdProvider.notifier).state = t.id;
-                        ref.read(editableTopicProvider.notifier).state = t;
-                      },
-                    );
+                return Card(
+                  child: ListView.builder(
+                    itemCount: topics.length,
+                    itemBuilder: (context, i) {
+                      final t = topics[i];
+                      final isOpen = t.id == effectiveSelectedId;
 
-                    final editor = _TopicEditor(
-                      topic: editable ?? selected ?? topics.first,
-                      onChanged: (t) =>
-                          ref.read(editableTopicProvider.notifier).state = t,
-                      onGenerateOutputs: () async {
-                        await ref.read(outputsProvider.notifier).generate();
-                        if (context.mounted) onNextToResults();
-                      },
-                    );
-
-                    if (!wide) {
-                      return ListView(
+                      return Column(
                         children: [
-                          list,
-                          const SizedBox(height: 12),
-                          editor,
+                          ListTile(
+                            title: Text(t.title),
+                            subtitle: Text(t.angle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            trailing: Icon(preview ? Icons.chevron_right : (isOpen ? Icons.expand_less : Icons.expand_more)),
+                            onTap: preview
+                                ? null
+                                : () {
+                                    ref.read(selectedTopicIdProvider.notifier).state = t.id;
+                                    ref.read(editableTopicProvider.notifier).state = t;
+                                  },
+                          ),
+                          AnimatedCrossFade(
+                            duration: const Duration(milliseconds: 220),
+                            crossFadeState: isOpen && !preview
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
+                            firstChild: const SizedBox.shrink(),
+                            secondChild: (isOpen && !preview)
+                                ? _TopicDropdownEditor(
+                                    key: ValueKey('editor_${t.id}'),
+                                    topic: effectiveEditable,
+                                    onChanged: (next) => ref
+                                        .read(editableTopicProvider.notifier)
+                                        .state = next,
+                                    onGenerateOutputs: () async {
+                                      await ref
+                                          .read(outputsProvider.notifier)
+                                          .generate();
+                                      if (context.mounted) onNextToResults();
+                                    },
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          if (i != topics.length - 1) const Divider(height: 1),
                         ],
                       );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(flex: 4, child: list),
-                        const SizedBox(width: 12),
-                        Expanded(flex: 5, child: editor),
-                      ],
-                    );
-                  },
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -115,45 +147,124 @@ class TopicsPage extends ConsumerWidget {
   }
 }
 
-class _TopicList extends StatelessWidget {
-  final List<Topic> topics;
-  final String? selectedId;
-  final ValueChanged<Topic> onSelect;
+class _GlobalSettingsCard extends StatelessWidget {
+  final GlobalSettings settings;
+  final ValueChanged<GlobalSettings> onChanged;
 
-  const _TopicList({
-    required this.topics,
-    required this.selectedId,
-    required this.onSelect,
+  const _GlobalSettingsCard({
+    required this.settings,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: topics.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (_, i) {
-          final t = topics[i];
-          final selected = t.id == selectedId;
-          return ListTile(
-            title: Text(t.title),
-            subtitle: Text(t.angle, maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing: selected ? const Icon(Icons.check_circle) : const Icon(Icons.chevron_right),
-            onTap: () => onSelect(t),
-          );
-        },
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Global settings', style: TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: settings.language,
+                    decoration: const InputDecoration(
+                      labelText: 'Language',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'cs', child: Text('Czech')),
+                      DropdownMenuItem(value: 'sk', child: Text('Slovak')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      onChanged(settings.copyWith(language: v));
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: settings.tone,
+                    decoration: const InputDecoration(
+                      labelText: 'Tone',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'professional', child: Text('Professional')),
+                      DropdownMenuItem(value: 'casual', child: Text('Casual')),
+                      DropdownMenuItem(value: 'funny', child: Text('Funny')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      onChanged(settings.copyWith(tone: v));
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: settings.length,
+                    decoration: const InputDecoration(
+                      labelText: 'Length',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'short', child: Text('Short')),
+                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                      DropdownMenuItem(value: 'long', child: Text('Long')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      onChanged(settings.copyWith(length: v));
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Hashtags'),
+                    value: settings.includeHashtags,
+                    onChanged: (v) => onChanged(settings.copyWith(includeHashtags: v)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Emojis'),
+                    value: settings.includeEmojis,
+                    onChanged: (v) => onChanged(settings.copyWith(includeEmojis: v)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TopicEditor extends StatelessWidget {
+class _TopicDropdownEditor extends StatelessWidget {
   final Topic topic;
   final ValueChanged<Topic> onChanged;
   final VoidCallback onGenerateOutputs;
 
-  const _TopicEditor({
+  const _TopicDropdownEditor({
+    super.key,
     required this.topic,
     required this.onChanged,
     required this.onGenerateOutputs,
@@ -161,70 +272,54 @@ class _TopicEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hookCtrl = TextEditingController(text: topic.hook);
-    final angleCtrl = TextEditingController(text: topic.angle);
-    final keyPointsCtrl = TextEditingController(text: topic.keyPoints.join('\n'));
-
-    void apply() {
-      final next = topic.copyWith(
-        hook: hookCtrl.text.trim(),
-        angle: angleCtrl.text.trim(),
-        keyPoints: keyPointsCtrl.text
-            .split('\n')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(),
-      );
-      onChanged(next);
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Detailed (editable)',
-                style: TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            Text('Title: ${topic.title}',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: hookCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'Hook', border: OutlineInputBorder()),
-              onChanged: (_) => apply(),
+    // Use initialValue fields (keyed by topic id) so it resets when selection changes.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          const Text('Detail', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          TextFormField(
+            key: ValueKey('hook_${topic.id}'),
+            initialValue: topic.hook,
+            decoration: const InputDecoration(labelText: 'Hook', border: OutlineInputBorder()),
+            onChanged: (v) => onChanged(topic.copyWith(hook: v)),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            key: ValueKey('angle_${topic.id}'),
+            initialValue: topic.angle,
+            decoration: const InputDecoration(labelText: 'Angle', border: OutlineInputBorder()),
+            onChanged: (v) => onChanged(topic.copyWith(angle: v)),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            key: ValueKey('kp_${topic.id}'),
+            initialValue: topic.keyPoints.join('\n'),
+            minLines: 5,
+            maxLines: 10,
+            decoration: const InputDecoration(
+              labelText: 'Key points (1 per line)',
+              border: OutlineInputBorder(),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: angleCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'Angle', border: OutlineInputBorder()),
-              onChanged: (_) => apply(),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: keyPointsCtrl,
-              minLines: 6,
-              maxLines: 10,
-              decoration: const InputDecoration(
-                labelText: 'Key points (1 per line)',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (_) => apply(),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () {
-                apply();
-                onGenerateOutputs();
-              },
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Generate for YouTube / TikTok / Telegram'),
-            ),
-          ],
-        ),
+            onChanged: (v) {
+              final kps = v
+                  .split('\n')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+              onChanged(topic.copyWith(keyPoints: kps));
+            },
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onGenerateOutputs,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Generate outputs'),
+          ),
+        ],
       ),
     );
   }

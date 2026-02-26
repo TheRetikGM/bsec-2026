@@ -22,10 +22,12 @@ class ApiClient {
   Future<List<Topic>> suggestTopics({
     required String promptText,
     required List<PromptAttachment> attachments,
+    GlobalSettings? settings,
   }) async {
     final payload = {
       'promptText': promptText,
       'attachments': attachments.map((a) => a.toJson()).toList(),
+      if (settings != null) 'settings': settings.toJson(),
     };
 
     try {
@@ -45,8 +47,8 @@ class ApiClient {
   /// POST /v1/content/generate
   /// Request: { "topic": { ... } }
   /// Response: { "youtube": "...", "tiktok": "...", "telegram": "..." }
-  Future<GeneratedOutputs> generateOutputs({required Topic topic}) async {
-    final payload = {'topic': topic.toJson()};
+  Future<GeneratedOutputs> generateOutputs({required Topic topic, GlobalSettings? settings}) async {
+    final payload = {'topic': topic.toJson(), if (settings != null) 'settings': settings.toJson()};
     try {
       final res = await _dio.post('/v1/content/generate', data: payload);
       return GeneratedOutputs.fromJson(res.data as Map<String, dynamic>);

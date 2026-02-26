@@ -40,6 +40,20 @@ class PromptAttachmentsNotifier extends StateNotifier<List<PromptAttachment>> {
   void clear() => state = const [];
 }
 
+final globalSettingsProvider =
+    NotifierProvider<GlobalSettingsNotifier, GlobalSettings>(GlobalSettingsNotifier.new);
+
+class GlobalSettingsNotifier extends Notifier<GlobalSettings> {
+  @override
+  GlobalSettings build() => const GlobalSettings(
+        language: 'en',
+        tone: 'professional',
+        length: 'medium',
+        includeHashtags: true,
+        includeEmojis: false,
+      );
+}
+
 final topicsProvider = AsyncNotifierProvider<TopicsNotifier, List<Topic>>(TopicsNotifier.new);
 
 class TopicsNotifier extends AsyncNotifier<List<Topic>> {
@@ -52,9 +66,11 @@ class TopicsNotifier extends AsyncNotifier<List<Topic>> {
     final attachments = ref.read(promptAttachmentsProvider);
 
     state = const AsyncLoading();
+    final settings = ref.read(globalSettingsProvider);
     state = await AsyncValue.guard(() => api.suggestTopics(
           promptText: text.trim(),
           attachments: attachments,
+          settings: settings,
         ));
   }
 
@@ -87,7 +103,8 @@ class OutputsNotifier extends AsyncNotifier<GeneratedOutputs?> {
     if (topic == null) return;
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => api.generateOutputs(topic: topic));
+    final settings = ref.read(globalSettingsProvider);
+    state = await AsyncValue.guard(() => api.generateOutputs(topic: topic, settings: settings));
   }
 
   void clear() => state = const AsyncData(null);
@@ -216,3 +233,5 @@ Future<({String? text, List<Uint8List> images})> readClipboardTextAndImages() as
 
   return (text: text, images: images);
 }
+
+
