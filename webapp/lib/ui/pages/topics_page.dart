@@ -192,16 +192,6 @@ class _GlobalSettingsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            TextFormField(
-              initialValue: settings.tone,
-              decoration: const InputDecoration(
-                labelText: 'Tone',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: (v) => onChanged(settings.copyWith(tone: v.trim().isEmpty ? settings.tone : v.trim())),
-            ),
-            const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: settings.includeHashtags,

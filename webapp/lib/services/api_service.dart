@@ -72,9 +72,6 @@ Future<Map<String, dynamic>> getJson({
       if (responseBody.isEmpty) {
         return {};
       }
-      print(responseBody);
-      print("dfljasjflasdja");
-      print(jsonDecode(responseBody));
       return jsonDecode(responseBody);
     } else {
       throw ApiException(

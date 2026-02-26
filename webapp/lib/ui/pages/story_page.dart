@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
+import '../widgets/animated_dots_text.dart';
 
 class StoryPage extends ConsumerWidget {
   final VoidCallback onBackToTopics;
@@ -76,7 +77,9 @@ class StoryPage extends ConsumerWidget {
                                     await ref.read(storyProvider.notifier).generate();
                                   },
                             icon: const Icon(Icons.auto_awesome),
-                            label: const Text('Generate story overview'),
+                            label: storyAsync.isLoading
+                                ? const AnimatedDotsText('Generating')
+                                : const Text('Generate story overview'),
                           ),
                         ],
                       ),
@@ -124,12 +127,16 @@ class StoryPage extends ConsumerWidget {
                               SelectableText(story.story),
                               const SizedBox(height: 12),
                               FilledButton.icon(
-                                onPressed: () async {
-                                  await ref.read(postsProvider.notifier).generate();
-                                  onNextToPosts();
-                                },
+                                onPressed: ref.watch(postsProvider).isLoading
+                                    ? null
+                                    : () async {
+                                        await ref.read(postsProvider.notifier).generate();
+                                        onNextToPosts();
+                                      },
                                 icon: const Icon(Icons.play_arrow),
-                                label: const Text('Generate posts'),
+                                label: ref.watch(postsProvider).isLoading
+                                    ? const AnimatedDotsText('Generating')
+                                    : const Text('Generate posts'),
                               ),
                             ],
                           ),

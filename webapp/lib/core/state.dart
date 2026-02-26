@@ -41,7 +41,6 @@ class SettingsNotifier extends Notifier<GlobalSettings> {
   @override
   GlobalSettings build() => const GlobalSettings(
         language: 'en',
-        tone: 'professional',
         length: 'medium',
         includeHashtags: true,
         includeEmojis: false,

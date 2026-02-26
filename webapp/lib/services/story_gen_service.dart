@@ -39,7 +39,8 @@ class StoryGenService {
 
   Future<StoryModel> writeStory(ProfileModel topic) async {
     final json = await _apiService.postJson(
-      path: '/webhook/writer', 
+      path: '/webhook-test/writer',
+      // path: '/webhook/writer',
       body: topic.toJson(),
     );
 
@@ -61,12 +62,12 @@ class StoryGenService {
     required String instagram,
   }) async {
     final json = await _apiService.getJson(
-      path: '/history',
-      queryParameters: {
-        'youtube': youtube,
-        'tiktok': tiktok,
-        'instagram': instagram,
-      },
+      path: '/webhook-test/import_memory',
+      // queryParameters: {
+      //   'youtube': youtube,
+      //   'tiktok': tiktok,
+      //   'instagram': instagram,
+      // },
     );
 
     final list = (json['history'] as List?) ?? const [];
@@ -76,13 +77,15 @@ class StoryGenService {
         .toList();
   }
 
-    Future<bool> submitHistory(List<HistoryModel> histories) async {
+  Future<bool> submitHistory(List<HistoryModel> histories) async {
     final jsonList = histories.map((history) => history.toJson()).toList();
 
     final json = await _apiService.postJson(
-      path: '/submit_history', // change later
+      path: '/webhook-test/import_memory',
       body: jsonList,
     );
+
+    if (json == {}) return false;
 
     return true;
   }

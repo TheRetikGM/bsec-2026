@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
+import '../widgets/animated_dots_text.dart';
 
 class StartPage extends ConsumerWidget {
   final VoidCallback onNavigateToTopics;
@@ -165,10 +166,9 @@ class _CircleGenerateButton extends StatelessWidget {
         ),
         child: Center(
           child: isBusy
-              ? const SizedBox(
-                  width: 42,
-                  height: 42,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 4),
+              ? AnimatedDotsText(
+                  'Generating',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
                 )
               : Text(
                   label,

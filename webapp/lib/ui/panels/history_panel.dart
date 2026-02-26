@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
 import '../../services/story_gen_service.dart';
+import '../pages/history_detail_page.dart';
+import '../widgets/animated_dots_text.dart';
 
 class HistoryPanel extends ConsumerStatefulWidget {
   const HistoryPanel({super.key});
@@ -15,6 +17,13 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
   final _yt = TextEditingController();
   final _tt = TextEditingController();
   final _ig = TextEditingController();
+
+  bool _submittingHistory = false;
+
+  String _fmtDate(DateTime d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)}';
+  }
 
   @override
   void dispose() {
@@ -38,13 +47,79 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                 child: Text('History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
               IconButton(
+                tooltip: 'Clear local history',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: _submittingHistory
+                    ? null
+                    : () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Clear history?'),
+                            content: const Text('This removes locally saved history.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
+                            ],
+                          ),
+                        );
+                        if (ok == true) {
+                          await ref.read(historyProvider.notifier).clear();
+                        }
+                      },
+              ),
+              IconButton(
                 tooltip: 'Import JSON',
                 icon: const Icon(Icons.file_open),
-                onPressed: () async {
-                  await ref.read(historyProvider.notifier).importFromJsonFile();
-                  final histories = ref.read(historyProvider).value!;
-                  await ref.read(storyGenServiceProvider).submitHistory(histories);
-                },
+                onPressed: _submittingHistory
+                    ? null
+                    : () async {
+                        try {
+                          await ref.read(historyProvider.notifier).importFromJsonFile();
+                          final histories = ref.read(historyProvider).value ?? const [];
+
+                          if (histories.isEmpty) return;
+
+                          setState(() => _submittingHistory = true);
+
+                          if (context.mounted) {
+                            showDialog<void>(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Submitting history'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    AnimatedDotsText('History is being processed by API'),
+                                    SizedBox(height: 12),
+                                    LinearProgressIndicator(),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          await ref.read(storyGenServiceProvider).submitHistory(histories);
+
+                          if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('History submitted.')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).maybePop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Import/submit failed: $e')),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _submittingHistory = false);
+                        }
+                      },
               ),
               IconButton(
                 tooltip: 'Export JSON',
@@ -129,6 +204,12 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            subtitle: Text(_fmtDate(h.date)),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => HistoryDetailPage(item: h)),
+                              );
+                            },
                           ),
                         ))
                     .toList(),
@@ -136,14 +217,6 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
             },
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Error: $e'),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () async {
-              await ref.read(historyProvider.notifier).clear();
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Clear local history'),
           ),
         ],
       ),

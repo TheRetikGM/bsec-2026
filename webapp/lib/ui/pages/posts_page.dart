@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/state.dart';
+import '../widgets/animated_dots_text.dart';
 
 class PostsPage extends ConsumerWidget {
   final VoidCallback onBackToStory;
@@ -45,7 +46,9 @@ class PostsPage extends ConsumerWidget {
                         await ref.read(postsProvider.notifier).generate();
                       },
                 icon: const Icon(Icons.refresh),
-                label: const Text('Regenerate'),
+                label: postsAsync.isLoading
+                    ? const AnimatedDotsText('Generating')
+                    : const Text('Regenerate'),
               ),
             ],
           ),
@@ -72,7 +75,9 @@ class PostsPage extends ConsumerWidget {
                                     await ref.read(postsProvider.notifier).generate();
                                   },
                             icon: const Icon(Icons.play_arrow),
-                            label: const Text('Generate posts'),
+                            label: postsAsync.isLoading
+                                ? const AnimatedDotsText('Generating')
+                                : const Text('Generate posts'),
                           ),
                         ],
                       ),

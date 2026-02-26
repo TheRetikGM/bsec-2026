@@ -6,14 +6,12 @@ import 'package:ai_redakcia_frontend/models/story_model.dart';
 
 class GlobalSettings {
   final String language;
-  final String tone;
   final String length; // short/medium/long
   final bool includeHashtags;
   final bool includeEmojis;
 
   const GlobalSettings({
     required this.language,
-    required this.tone,
     required this.length,
     required this.includeHashtags,
     required this.includeEmojis,
@@ -21,14 +19,12 @@ class GlobalSettings {
 
   GlobalSettings copyWith({
     String? language,
-    String? tone,
     String? length,
     bool? includeHashtags,
     bool? includeEmojis,
   }) {
     return GlobalSettings(
       language: language ?? this.language,
-      tone: tone ?? this.tone,
       length: length ?? this.length,
       includeHashtags: includeHashtags ?? this.includeHashtags,
       includeEmojis: includeEmojis ?? this.includeEmojis,
@@ -37,7 +33,6 @@ class GlobalSettings {
 
   Map<String, dynamic> toJson() => {
         'language': language,
-        'tone': tone,
         'length': length,
         'includeHashtags': includeHashtags,
         'includeEmojis': includeEmojis,
@@ -45,7 +40,6 @@ class GlobalSettings {
 
   static GlobalSettings fromJson(Map<String, dynamic> json) => GlobalSettings(
         language: (json['language'] ?? 'en').toString(),
-        tone: (json['tone'] ?? 'professional').toString(),
         length: (json['length'] ?? 'medium').toString(),
         includeHashtags: json['includeHashtags'] == true,
         includeEmojis: json['includeEmojis'] == true,
